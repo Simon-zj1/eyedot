@@ -17,6 +17,20 @@
 不要在生产长期用 `db:push --force`。正式数据一旦出现，只允许通过 `drizzle/migrations` 的
 `db:migrate` 变更结构；`db:push` 只给本地和 Preview 用。
 
+### 早期 `db:push` 数据库的 baseline
+
+如果你接手的是“以前只用 `db:push` 建过表、没有 `drizzle.__drizzle_migrations` 历史”的数据库，
+直接跑 `db:migrate` 会从 `0000` 重放并失败。正确顺序是先 baseline 已存在的迁移，再跑增量：
+
+1. 备份数据库；
+2. 比对当前表结构与 `drizzle/` 迁移快照，确认已存在的是哪几个版本；
+3. 把这些版本的 `tag/hash/when` 写入 `drizzle.__drizzle_migrations`（hash = 对应 SQL 文件的
+   SHA-256），只写入真实已应用到的版本；
+4. 再执行 `npm run db:migrate`，让后续增量迁移正常应用。
+
+本轮线上库就属于这种情况：先 baseline `0000–0003`，再应用 `0004` 之后的迁移。不要把
+“全新库迁移”和“既有库 baseline”混成同一条操作。
+
 ## 2. 备份
 
 Neon 的数据库级备份依赖控制台开启 PITR。应用层面每个用户随时可在“设置 → 导出完整备份”拿到

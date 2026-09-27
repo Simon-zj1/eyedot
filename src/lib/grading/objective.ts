@@ -90,6 +90,7 @@ export async function gradeCloze(
       method: "exact",
       needsReview: true,
       reviewReasons: ["semantic_check_unavailable"],
+      scoreRange: [0, 1],
     });
   }
 
@@ -124,6 +125,7 @@ export async function gradeCloze(
     confidence: strength,
     needsReview,
     reviewReasons: needsReview ? ["low_confidence_semantic_match"] : [],
+    scoreRange: needsReview ? [0, 1] : undefined,
     engineId: result.engineId,
     model: result.model,
     latencyMs: result.latencyMs,

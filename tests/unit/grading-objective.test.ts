@@ -78,6 +78,7 @@ describe("客观题判分", () => {
     const flagged = await gradeCloze(cloze, "光合", uncertain);
     expect(flagged.needsReview).toBe(true);
     expect(flagged.reviewReasons).toContain("low_confidence_semantic_match");
+    expect(flagged.scoreRange).toEqual([0, 1]);
   });
 
   it("没有引擎时，字面不一致的填空标记为待复核而不是直接判错", async () => {
@@ -85,5 +86,6 @@ describe("客观题判分", () => {
     expect(judgment.scorePercent).toBe(0);
     expect(judgment.needsReview).toBe(true);
     expect(judgment.reviewReasons).toContain("semantic_check_unavailable");
+    expect(judgment.scoreRange).toEqual([0, 1]);
   });
 });
