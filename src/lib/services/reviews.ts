@@ -299,38 +299,40 @@ export async function gradeReviewAnswer(
       )
     : { state: createReviewState(rating, now), elapsedDays: 0, scheduledDays: 0 };
 
-  await store.upsertReviewItem({
-    userId: user.id,
-    questionId: question.id,
-    materialId: question.materialId,
-    topicKey: topicKeyOf(question.topicTitle),
-    topicTitle: question.topicTitle,
-    stability: next.state.stability,
-    difficulty: next.state.difficulty,
-    reps: next.state.reps,
-    lapses: next.state.lapses,
-    state: next.state.state,
-    dueAt: next.state.dueAt,
-    lastReviewedAt: next.state.lastReviewedAt,
-    lastScorePercent: judgment.scorePercent,
-    lastRating: rating,
-  });
-
-  if (existing) {
-    await store.saveReviewLog({
+  // 卡片推进与复习日志必须一起成功；否则排期变了却没有历史记录。
+  await store.transaction(async (tx) => {
+    await tx.upsertReviewItem({
       userId: user.id,
       questionId: question.id,
-      rating,
-      scorePercent: judgment.scorePercent,
-      stabilityBefore: existing.stability,
-      difficultyBefore: existing.difficulty,
-      stabilityAfter: next.state.stability,
-      difficultyAfter: next.state.difficulty,
-      elapsedDays: next.elapsedDays,
-      scheduledDays: next.scheduledDays,
-      reviewedAt: now,
+      materialId: question.materialId,
+      topicKey: topicKeyOf(question.topicTitle),
+      topicTitle: question.topicTitle,
+      stability: next.state.stability,
+      difficulty: next.state.difficulty,
+      reps: next.state.reps,
+      lapses: next.state.lapses,
+      state: next.state.state,
+      dueAt: next.state.dueAt,
+      lastReviewedAt: next.state.lastReviewedAt,
+      lastScorePercent: judgment.scorePercent,
+      lastRating: rating,
     });
-  }
+    if (existing) {
+      await tx.saveReviewLog({
+        userId: user.id,
+        questionId: question.id,
+        rating,
+        scorePercent: judgment.scorePercent,
+        stabilityBefore: existing.stability,
+        difficultyBefore: existing.difficulty,
+        stabilityAfter: next.state.stability,
+        difficultyAfter: next.state.difficulty,
+        elapsedDays: next.elapsedDays,
+        scheduledDays: next.scheduledDays,
+        reviewedAt: now,
+      });
+    }
+  });
 
   return {
     questionId: question.id,
