@@ -62,12 +62,20 @@ export function sumUsage(records: LlmUsageRecord[]): LlmUsageRecord {
   return records.reduce<LlmUsageRecord>(
     (total, record) => ({
       model: "全部模型",
+      origin: total.origin,
       calls: total.calls + record.calls,
       inputTokens: total.inputTokens + record.inputTokens,
       outputTokens: total.outputTokens + record.outputTokens,
       costMicroUsd: total.costMicroUsd + record.costMicroUsd,
     }),
-    { model: "全部模型", calls: 0, inputTokens: 0, outputTokens: 0, costMicroUsd: 0 },
+    {
+      model: "全部模型",
+      origin: records[0]?.origin ?? "platform",
+      calls: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      costMicroUsd: 0,
+    },
   );
 }
 

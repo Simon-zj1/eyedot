@@ -1,3 +1,4 @@
+import { MISTAKE_THRESHOLD_PERCENT } from "@/lib/config";
 import { getStore } from "@/lib/db";
 import type { AttemptRecord, JudgmentRecord, QuestionRecord, UserRecord } from "@/lib/db/types";
 import { resolveDecisionEngine } from "@/lib/engine";
@@ -12,8 +13,6 @@ import { toGeneratedQuestion } from "@/lib/services/questions";
 import { syncReviewsFromAttempt } from "@/lib/services/reviews";
 import { assertWithinSpendCap, recordChatUsage } from "@/lib/services/usage";
 import type { AnswerKey, Judgment } from "@/lib/types";
-
-const MISTAKE_THRESHOLD_PERCENT = 60;
 
 export type SubmitAnswerInput = {
   questionId: string;
@@ -104,7 +103,11 @@ export async function judgeOneAnswerForUser(
     throw error;
   } finally {
     // 判定已经调用过模型就产生了成本，即便随后写库失败也要记账
-    await recordChatUsage(user.id, usage.pending);
+    await recordChatUsage(
+      user.id,
+      usage.pending,
+      selection.countsAgainstQuota ? "platform" : "byok",
+    );
   }
 
   await store.transaction(async (tx) => {

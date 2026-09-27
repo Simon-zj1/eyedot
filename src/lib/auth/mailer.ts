@@ -13,7 +13,8 @@ export type EmailDeliveryMode = "webhook" | "resend" | "console" | "none";
 export function emailDeliveryMode(): EmailDeliveryMode {
   if (env("AUTH_EMAIL_WEBHOOK_URL")) return "webhook";
   if (env("RESEND_API_KEY") && env("AUTH_EMAIL_FROM")) return "resend";
-  if (process.env.NODE_ENV !== "production" || env("AUTH_DEV_MODE") === "1") return "console";
+  // 生产环境绝不退回控制台/明文验证码；本地与测试才允许。
+  if (process.env.NODE_ENV !== "production") return "console";
   return "none";
 }
 
@@ -38,7 +39,9 @@ async function postJson(url: string, body: unknown, headers: Record<string, stri
   });
   if (!response.ok) {
     const detail = (await response.text()).slice(0, 200);
-    throw new AppError(`登录邮件发送失败：${response.status} ${detail}`, 502, "email_failed");
+    // 上游响应可能包含请求体回显，只落服务端日志，不返回给调用方。
+    console.error(`[auth] 登录邮件发送失败：${response.status} ${detail}`);
+    throw new AppError("登录邮件发送失败，请稍后重试。", 502, "email_failed");
   }
 }
 

@@ -46,7 +46,7 @@ export async function generateOutlineForMaterial(
     });
   } finally {
     // 调用已经发生、成本已经产生，失败也要记账
-    await recordChatUsage(user.id, usage.pending);
+    await recordChatUsage(user.id, usage.pending, countsAgainstQuota ? "platform" : "byok");
   }
 
   const blueprint = await getStore().saveBlueprint({
@@ -114,7 +114,7 @@ export async function createExamForMaterial(
     if (countsAgainstQuota) await refundQuota(user.id, { question: count });
     throw error;
   } finally {
-    await recordChatUsage(user.id, usage.pending);
+    await recordChatUsage(user.id, usage.pending, countsAgainstQuota ? "platform" : "byok");
   }
 
   const store = getStore();

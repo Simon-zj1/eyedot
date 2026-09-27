@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { emailDeliveryMode } from "@/lib/auth/mailer";
 import { storeDriver } from "@/lib/db";
+import { env } from "@/lib/env";
 import { engineStatus } from "@/lib/services/status";
 
 export const runtime = "nodejs";
@@ -22,6 +23,7 @@ export async function GET() {
       store: storeDriver(),
       auth: {
         emailDelivery: emailDeliveryMode(),
+        sessionSecretConfigured: Boolean(env("SESSION_SECRET")),
       },
       engines: {
         judge: status.judgeEngine,

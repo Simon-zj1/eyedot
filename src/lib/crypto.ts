@@ -12,7 +12,16 @@ import { env } from "@/lib/env";
 const DEV_SECRET = "dev-only-session-secret-do-not-use-in-production";
 
 function secret(): string {
-  return env("SESSION_SECRET") ?? DEV_SECRET;
+  const configured = env("SESSION_SECRET");
+  if (configured) return configured;
+  // 构建阶段允许用开发值，避免 CI 为了编译而持有生产密钥；真正运行时必须显式配置。
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PHASE !== "phase-production-build"
+  ) {
+    throw new Error("生产环境必须设置 SESSION_SECRET，拒绝使用公开开发密钥。");
+  }
+  return DEV_SECRET;
 }
 
 function signingKey(): Buffer {

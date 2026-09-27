@@ -180,4 +180,57 @@ describe("复习排程（FSRS）", () => {
     expect(sync.kept).toBeGreaterThan(0);
     expect(await store.listReviewItems(user.id)).toHaveLength(0);
   });
+
+  it("复习时出现待复核，不推进现有卡片", async () => {
+    const user = (await loginWithInvite("review-uncertain@example.com", "REVIEW-CODE")).user;
+    const material = await createMaterialForUser(user, {
+      title: "复习待复核材料",
+      rawText: SAMPLE_MATERIAL,
+    });
+    await generateOutlineForMaterial(user, material.id, { topicCount: 3 });
+    const exam = await createExamForMaterial(user, {
+      materialId: material.id,
+      topicIds: [],
+      count: 4,
+      mix: { short_answer: 1, mcq: 3 },
+    });
+    const questionIds = await store.listExamQuestionIds(exam.exam.id);
+    const question = (await store.getQuestions(questionIds)).find(
+      (entry) => entry.type === "short_answer",
+    );
+    expect(question).toBeDefined();
+    if (!question) return;
+
+    await store.upsertReviewItem({
+      userId: user.id,
+      questionId: question.id,
+      materialId: question.materialId,
+      topicKey: question.topicTitle,
+      topicTitle: question.topicTitle,
+      stability: 2,
+      difficulty: 5,
+      reps: 2,
+      lapses: 1,
+      state: "review",
+      dueAt: new Date(Date.now() - 60_000),
+      lastReviewedAt: new Date(Date.now() - 86_400_000),
+      lastScorePercent: 50,
+      lastRating: 2,
+    });
+    const before = await store.getReviewItem(user.id, question.id);
+
+    setDecisionEngineOverride(judgeEngine(0.5));
+    const result = await gradeReviewAnswer(user, question.id, {
+      type: "short_answer",
+      text: "作答",
+    });
+    expect(result.needsReview).toBe(true);
+    expect(result.scheduledDays).toBe(0);
+    expect(result.intervalLabel).toContain("待复核");
+
+    const after = await store.getReviewItem(user.id, question.id);
+    expect(after?.reps).toBe(before?.reps);
+    expect(after?.lapses).toBe(before?.lapses);
+    expect(after?.dueAt.getTime()).toBe(before?.dueAt.getTime());
+  });
 });

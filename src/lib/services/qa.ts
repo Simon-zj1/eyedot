@@ -107,13 +107,17 @@ export async function askMaterialQuestion(
     throw error;
   }
 
-  await recordChatUsage(user.id, [
-    {
-      model: response.model,
-      inputTokens: response.usage?.inputTokens,
-      outputTokens: response.usage?.outputTokens,
-    },
-  ]);
+  await recordChatUsage(
+    user.id,
+    [
+      {
+        model: response.model,
+        inputTokens: response.usage?.inputTokens,
+        outputTokens: response.usage?.outputTokens,
+      },
+    ],
+    selection.countsAgainstQuota ? "platform" : "byok",
+  );
 
   const check = verifyCitations(response.text.trim(), retrieval.evidence, {
     pageOf: (charOffset) => pageAt(material.sourceMap, charOffset),

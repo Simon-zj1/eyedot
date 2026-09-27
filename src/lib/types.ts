@@ -80,16 +80,28 @@ export class DecisionEngineError extends Error {
   readonly engineId: string;
   readonly status?: number;
   readonly retryable: boolean;
+  /** 已经产生 token 但随后解析/校验失败的调用，也要把 usage 带回计量层。 */
+  readonly usage?: { inputTokens?: number; outputTokens?: number };
+  readonly model?: string;
 
   constructor(
     message: string,
-    options: { engineId: string; status?: number; retryable?: boolean; cause?: unknown },
+    options: {
+      engineId: string;
+      status?: number;
+      retryable?: boolean;
+      cause?: unknown;
+      usage?: { inputTokens?: number; outputTokens?: number };
+      model?: string;
+    },
   ) {
     super(message, { cause: options.cause });
     this.name = "DecisionEngineError";
     this.engineId = options.engineId;
     this.status = options.status;
     this.retryable = options.retryable ?? false;
+    this.usage = options.usage;
+    this.model = options.model;
   }
 }
 

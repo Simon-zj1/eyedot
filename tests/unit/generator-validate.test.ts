@@ -79,6 +79,43 @@ describe("出题落地校验", () => {
       "unknown_topic",
     ]);
   });
+
+  it("简答题的 point_id 重复会被拒绝", () => {
+    const candidates = [
+      {
+        id: "dup",
+        topic_id: "t1",
+        type: "short_answer",
+        stem: "请说明光反应。",
+        reference_answer: "光反应发生在类囊体薄膜上。",
+        difficulty: "medium",
+        source_anchor: "光反应发生在类囊体薄膜上",
+        rubric_points: [
+          {
+            point_id: "p1",
+            statement: "说明场所",
+            weight: 1,
+            evidence_span: "光反应发生在类囊体薄膜上",
+          },
+          {
+            point_id: "p1",
+            statement: "说明条件",
+            weight: 1,
+            evidence_span: "需要光照",
+          },
+          {
+            point_id: "p3",
+            statement: "说明产物",
+            weight: 1,
+            evidence_span: "水在光下分解产生氧气",
+          },
+        ],
+      },
+    ];
+    const { valid, issues } = validateQuestions(candidates, material, topicIds);
+    expect(valid).toHaveLength(0);
+    expect(issues.some((issue) => issue.code === "schema_invalid")).toBe(true);
+  });
 });
 
 describe("离线出题器", () => {

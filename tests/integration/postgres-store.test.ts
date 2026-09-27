@@ -183,6 +183,8 @@ describe.skipIf(!pgliteAvailable)("Postgres 存储层（PGlite 实测）", () =>
     expect(await store.listExamQuestionIds(exam.id)).toEqual(["q1"]);
 
     const attempt = await store.createAttempt(exam.id, user.id);
+    const sameAttempt = await store.createAttempt(exam.id, user.id);
+    expect(sameAttempt.id).toBe(attempt.id);
     const answer = await store.saveAnswer(attempt.id, "q1", { type: "cloze", text: "类囊体薄膜" });
     await store.saveJudgment({
       answerId: answer.id,

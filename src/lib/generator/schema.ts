@@ -53,6 +53,19 @@ export const shortAnswerSchema = z.object({
   type: z.literal("short_answer"),
   reference_answer: z.string().min(4).max(3000),
   rubric_points: z.array(rubricPointSchema).min(3).max(6),
+}).superRefine((value, ctx) => {
+  const ids = new Set<string>();
+  for (const point of value.rubric_points) {
+    if (ids.has(point.point_id)) {
+      ctx.addIssue({
+        code: "custom",
+        message: `rubric_points.point_id 必须唯一：${point.point_id}`,
+        path: ["rubric_points"],
+      });
+      return;
+    }
+    ids.add(point.point_id);
+  }
 });
 
 export const generatedQuestionSchema = z.discriminatedUnion("type", [

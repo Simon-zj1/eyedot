@@ -1,3 +1,9 @@
+-- 旧版 deleteMaterial 只删了 questions，可能留下指向已删题目的复习卡/日志。
+-- 先清理孤儿行，再加外键，保证从旧库升级不会因历史脏数据失败。
+DELETE FROM "review_items" WHERE "question_id" NOT IN (SELECT "id" FROM "questions");
+--> statement-breakpoint
+DELETE FROM "review_logs" WHERE "question_id" NOT IN (SELECT "id" FROM "questions");
+--> statement-breakpoint
 ALTER TABLE "answers" ADD CONSTRAINT "answers_attempt_id_attempts_id_fk" FOREIGN KEY ("attempt_id") REFERENCES "public"."attempts"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "answers" ADD CONSTRAINT "answers_question_id_questions_id_fk" FOREIGN KEY ("question_id") REFERENCES "public"."questions"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "attempts" ADD CONSTRAINT "attempts_exam_id_exams_id_fk" FOREIGN KEY ("exam_id") REFERENCES "public"."exams"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint

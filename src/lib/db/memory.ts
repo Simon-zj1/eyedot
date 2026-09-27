@@ -1,4 +1,4 @@
-import { QUOTA_LIMITS, type QuotaKind } from "@/lib/config";
+import { MASTERY_ALPHA, QUOTA_LIMITS, type QuotaKind } from "@/lib/config";
 import { createId } from "@/lib/ids";
 import type {
   AnswerRecord,
@@ -9,6 +9,7 @@ import type {
   InviteCodeRecord,
   JudgmentRecord,
   LlmUsageDelta,
+  LlmUsageOrigin,
   LlmUsageRecord,
   LoginChallengeRecord,
   MasteryRecord,
@@ -33,8 +34,6 @@ import type {
 } from "@/lib/db/types";
 import { normalizeEmail } from "@/lib/auth/email";
 import type { AnswerPayload } from "@/lib/grading";
-
-const MASTERY_ALPHA = 0.3;
 
 type MemoryState = {
   users: Map<string, UserRecord>;
@@ -356,6 +355,8 @@ export class MemoryStore implements Store {
   }
 
   async createAttempt(examId: string, userId: string): Promise<AttemptRecord> {
+    const existing = await this.getOpenAttempt(examId, userId);
+    if (existing) return existing;
     const record: AttemptRecord = {
       id: createId("att"),
       examId,
@@ -533,7 +534,12 @@ export class MemoryStore implements Store {
     day: string,
     costs: Partial<Record<QuotaKind, number>>,
   ): Promise<{ allowed: boolean; exceeded?: QuotaKind; usage: UsageSnapshot }> {
-    const current = await this.getUsage(userId, day);
+    // 这里刻意不 await：检查与写入之间不能有 microtask 让出点，否则并发会超限。
+    const keyOf = (kind: QuotaKind) => `${userId}::${day}::${kind}`;
+    const current = {} as UsageSnapshot;
+    for (const kind of Object.keys(QUOTA_LIMITS) as QuotaKind[]) {
+      current[kind] = this.state.usage.get(keyOf(kind)) ?? 0;
+    }
     for (const [kind, amount] of Object.entries(costs) as [QuotaKind, number][]) {
       if (!amount || amount <= 0) continue;
       if (current[kind] + amount > QUOTA_LIMITS[kind]) {
@@ -542,9 +548,11 @@ export class MemoryStore implements Store {
     }
     for (const [kind, amount] of Object.entries(costs) as [QuotaKind, number][]) {
       if (!amount || amount <= 0) continue;
-      await this.incrementUsage(userId, day, kind, amount);
+      const next = current[kind] + amount;
+      this.state.usage.set(keyOf(kind), next);
+      current[kind] = next;
     }
-    return { allowed: true, usage: await this.getUsage(userId, day) };
+    return { allowed: true, usage: current };
   }
 
   async refundUsage(
@@ -564,11 +572,13 @@ export class MemoryStore implements Store {
     userId: string,
     day: string,
     model: string,
+    origin: LlmUsageOrigin,
     delta: LlmUsageDelta,
   ): Promise<LlmUsageRecord> {
-    const key = `${userId}::${day}::${model}`;
+    const key = `${userId}::${day}::${model}::${origin}`;
     const current: LlmUsageRecord = this.state.llmUsage.get(key) ?? {
       model,
+      origin,
       calls: 0,
       inputTokens: 0,
       outputTokens: 0,
@@ -576,6 +586,7 @@ export class MemoryStore implements Store {
     };
     const next: LlmUsageRecord = {
       model,
+      origin,
       calls: current.calls + (delta.calls ?? 0),
       inputTokens: current.inputTokens + (delta.inputTokens ?? 0),
       outputTokens: current.outputTokens + (delta.outputTokens ?? 0),
@@ -592,9 +603,9 @@ export class MemoryStore implements Store {
       .sort((a, b) => b.costMicroUsd - a.costMicroUsd);
   }
 
-  async sumLlmUsageForDay(day: string): Promise<LlmUsageDelta> {
+  async sumLlmUsageForDay(day: string, origin: LlmUsageOrigin = "platform"): Promise<LlmUsageDelta> {
     return [...this.state.llmUsage.entries()]
-      .filter(([key]) => key.split("::")[1] === day)
+      .filter(([key, record]) => key.split("::")[1] === day && record.origin === origin)
       .reduce<LlmUsageDelta>(
         (total, [, record]) => ({
           calls: (total.calls ?? 0) + record.calls,
@@ -624,6 +635,12 @@ export class MemoryStore implements Store {
   }
 
   async deleteUserData(userId: string): Promise<void> {
+    const user = this.state.users.get(userId);
+    if (user) {
+      for (const [id, challenge] of [...this.state.loginChallenges.entries()]) {
+        if (challenge.email === user.email) this.state.loginChallenges.delete(id);
+      }
+    }
     const materialIds = new Set(
       [...this.state.materials.values()]
         .filter((material) => material.userId === userId)

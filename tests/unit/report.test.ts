@@ -70,6 +70,14 @@ describe("静态报告渲染", () => {
     expect(html).toContain("第 1 句 / 共 2 句");
   });
 
+  it("customCss 不能提前闭合 style 注入脚本", async () => {
+    const html = renderReportHtml(await buildReport(), {
+      customCss: "</style><script>alert(1)</script>",
+    });
+    expect(html).not.toContain("<script");
+    expect(html).not.toContain("</style><script");
+  });
+
   it("Markdown 报告包含逐点判定表与未覆盖要点", async () => {
     const report = await buildReport();
     const markdown = renderReportMarkdown(report);

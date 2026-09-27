@@ -43,8 +43,8 @@ describe("模型成本估算", () => {
 
   it("汇总多个模型", () => {
     const total = sumUsage([
-      { model: "a", calls: 2, inputTokens: 100, outputTokens: 50, costMicroUsd: 10 },
-      { model: "b", calls: 1, inputTokens: 200, outputTokens: 80, costMicroUsd: 20 },
+      { model: "a", origin: "platform", calls: 2, inputTokens: 100, outputTokens: 50, costMicroUsd: 10 },
+      { model: "b", origin: "platform", calls: 1, inputTokens: 200, outputTokens: 80, costMicroUsd: 20 },
     ]);
     expect(total.calls).toBe(3);
     expect(total.inputTokens).toBe(300);
@@ -78,6 +78,35 @@ describe("模型成本估算", () => {
         p1: { type: "noul", instructions: "是否覆盖" },
       });
       expect(events).toEqual([{ model: "jev-test", inputTokens: 123, outputTokens: 0 }]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("判定响应校验失败但已经产生 token 时，usage 仍会进入计量回调", async () => {
+    process.env.TYPESAFE_API_KEY = "test-key";
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          model: "jev-test",
+          answers: {},
+          usage: { input_tokens: 321, output_tokens: 0 },
+        }),
+        { status: 200 },
+      )) as typeof fetch;
+
+    const events: { model: string; inputTokens?: number; outputTokens?: number }[] = [];
+    try {
+      const selection = resolveDecisionEngine({
+        onChatUsage: (event) => events.push(event),
+      });
+      await expect(
+        selection.engine.decide("state", {
+          p1: { type: "noul", instructions: "是否覆盖" },
+        }),
+      ).rejects.toThrow(/缺少或无法解析/);
+      expect(events).toEqual([{ model: "jev-test", inputTokens: 321, outputTokens: 0 }]);
     } finally {
       globalThis.fetch = originalFetch;
     }

@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   doublePrecision,
@@ -164,7 +165,13 @@ export const attempts = pgTable(
     scorePercent: integer("score_percent"),
     needsReviewCount: integer("needs_review_count"),
   },
-  (table) => [index("attempts_exam_idx").on(table.examId)],
+  (table) => [
+    index("attempts_exam_idx").on(table.examId),
+    // 同一份试卷、同一个用户只能有一条进行中的答题；防止双击/并发产生两条 attempt。
+    uniqueIndex("attempts_open_exam_user_unique")
+      .on(table.examId, table.userId)
+      .where(sql`${table.status} = 'in_progress'`),
+  ],
 );
 
 export const answers = pgTable(
@@ -262,12 +269,14 @@ export const llmUsage = pgTable(
     userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     day: text("day").notNull(),
     model: text("model").notNull(),
+    /** platform = 平台 Key，计入平台熔断；byok = 用户自己的 Key，只做个人展示 */
+    origin: text("origin").notNull().default("platform"),
     calls: integer("calls").notNull().default(0),
     inputTokens: integer("input_tokens").notNull().default(0),
     outputTokens: integer("output_tokens").notNull().default(0),
     costMicroUsd: integer("cost_micro_usd").notNull().default(0),
   },
-  (table) => [primaryKey({ columns: [table.userId, table.day, table.model] })],
+  (table) => [primaryKey({ columns: [table.userId, table.day, table.model, table.origin] })],
 );
 
 /**

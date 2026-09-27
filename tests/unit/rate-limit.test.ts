@@ -34,11 +34,16 @@ describe("限流（滑动窗口）", () => {
     expect(checkRateLimit("b", rule, start).allowed).toBe(true);
   });
 
-  it("优先按 x-forwarded-for 取客户端标识", () => {
+  it("优先按可信的 x-real-ip，其次取 XFF 最后一段", () => {
+    const withRealIp = new Request("https://example.com", {
+      headers: { "x-real-ip": "9.9.9.9", "x-forwarded-for": "1.2.3.4, 5.6.7.8" },
+    });
+    expect(clientKey(withRealIp)).toBe("9.9.9.9");
+
     const request = new Request("https://example.com", {
       headers: { "x-forwarded-for": "1.2.3.4, 5.6.7.8" },
     });
-    expect(clientKey(request)).toBe("1.2.3.4");
+    expect(clientKey(request)).toBe("5.6.7.8");
   });
 });
 

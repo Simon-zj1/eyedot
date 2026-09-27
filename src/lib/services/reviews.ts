@@ -1,3 +1,4 @@
+import { MISTAKE_THRESHOLD_PERCENT } from "@/lib/config";
 import { getStore } from "@/lib/db";
 import type { MaterialRecord, QuestionRecord, ReviewItemRecord, UserRecord } from "@/lib/db/types";
 import { resolveDecisionEngine } from "@/lib/engine";
@@ -17,9 +18,6 @@ import { consumeQuota, refundQuota } from "@/lib/quota";
 import { readByok } from "@/lib/services/byok";
 import { toGeneratedQuestion, toStudentQuestion } from "@/lib/services/questions";
 import { assertWithinSpendCap, recordChatUsage } from "@/lib/services/usage";
-
-/** 低于这个分数算「没掌握」，会进入复习队列 */
-const MISTAKE_THRESHOLD_PERCENT = 60;
 
 export type DueReviewCard = {
   item: ReviewItemRecord;
@@ -248,7 +246,11 @@ export async function gradeReviewAnswer(
     if (judgmentQuotaReserved) await refundQuota(user.id, { judgment: 1 });
     throw error;
   } finally {
-    await recordChatUsage(user.id, usage.pending);
+    await recordChatUsage(
+      user.id,
+      usage.pending,
+      selection.countsAgainstQuota ? "platform" : "byok",
+    );
   }
   if (selection.countsAgainstQuota && !judgment.usedEngine && judgmentQuotaReserved) {
     await refundQuota(user.id, { judgment: 1 });
@@ -257,6 +259,30 @@ export async function gradeReviewAnswer(
   const rating = options.ratingOverride ?? ratingFromScore(judgment.scorePercent);
   const existing = await store.getReviewItem(user.id, question.id);
   const now = new Date();
+
+  // 待复核的判定不推进 FSRS：不确定的结果不应该决定下一次何时复习。
+  if (judgment.needsReview) {
+    return {
+      questionId: question.id,
+      scorePercent: judgment.scorePercent,
+      needsReview: true,
+      reviewReasons: judgment.reviewReasons,
+      rating,
+      scheduledDays: 0,
+      intervalLabel: "待复核，暂不排期",
+      nextDueAt: existing?.dueAt ?? now,
+      engineId: judgment.engineId,
+      model: judgment.model,
+      latencyMs: judgment.latencyMs,
+      points: judgment.points.map((point) => ({
+        point_id: point.point_id,
+        statement: point.statement,
+        probability: point.probability,
+        awarded: point.awarded,
+      })),
+    };
+  }
+
   const next = existing
     ? scheduleReview(
         {

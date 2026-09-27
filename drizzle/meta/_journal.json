@@ -43,6 +43,20 @@
       "when": 1790501732399,
       "tag": "0005_white_lady_mastermind",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790526110737,
+      "tag": "0006_stale_lightspeed",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790526188432,
+      "tag": "0007_rapid_venus",
+      "breakpoints": true
     }
   ]
 }

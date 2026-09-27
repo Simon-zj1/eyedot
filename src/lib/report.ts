@@ -215,6 +215,11 @@ export type ReportRenderOptions = {
   customCss?: string;
 };
 
+/** customCss 只能留在 <style> 上下文内；去掉能提前闭合标签的序列。 */
+function sanitizeCustomCss(value: string | undefined): string {
+  return (value ?? "").replace(/<\/style/gi, "").replace(/<script/gi, "").replace(/<\/script/gi, "");
+}
+
 export function renderReportHtml(
   report: StudyReport,
   options: ReportRenderOptions = {},
@@ -368,7 +373,7 @@ blockquote{margin:8px 0;padding:8px 12px;border-left:3px solid var(--line);color
 .uncovered{margin:8px 0 0;padding-left:18px;color:var(--warn);font-size:13.5px}
 .foot{margin-top:28px;color:var(--muted);font-size:12.5px}
 @media print{.q,.card{break-inside:avoid}}
-${options.customCss ?? ""}
+${sanitizeCustomCss(options.customCss)}
 </style>
 </head>
 <body>

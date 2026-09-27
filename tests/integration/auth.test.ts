@@ -49,4 +49,14 @@ describe("邮箱验证码登录", () => {
     await store.revokeUserSessions(result.user.id);
     expect(await userFromSession(session!)).toBeNull();
   });
+
+  it("删除账号会清理该邮箱的登录挑战记录", async () => {
+    const store = useMemoryStore();
+    const user = await store.createUser("cleanup@example.com");
+    await requestLoginCode("cleanup@example.com");
+    expect(await store.getLatestLoginChallenge("cleanup@example.com")).not.toBeNull();
+
+    await store.deleteUserData(user.id);
+    expect(await store.getLatestLoginChallenge("cleanup@example.com")).toBeNull();
+  });
 });

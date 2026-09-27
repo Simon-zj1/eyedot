@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gt, inArray, isNull, lt, lte, or, sql } from "drizzle-orm";
 import type { PgDatabase } from "drizzle-orm/pg-core";
-import { QUOTA_LIMITS, type QuotaKind } from "@/lib/config";
+import { MASTERY_ALPHA, QUOTA_LIMITS, type QuotaKind } from "@/lib/config";
 import { createId } from "@/lib/ids";
 import { normalizeEmail } from "@/lib/auth/email";
 import * as schema from "@/lib/db/schema";
@@ -13,6 +13,7 @@ import type {
   InviteCodeRecord,
   JudgmentRecord,
   LlmUsageDelta,
+  LlmUsageOrigin,
   LlmUsageRecord,
   LoginChallengeRecord,
   MasteryRecord,
@@ -39,8 +40,6 @@ import type { AnswerPayload } from "@/lib/grading";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export type AnyPgDatabase = PgDatabase<any, any, any>;
-
-const MASTERY_ALPHA = 0.3;
 
 /** 事务内部用于触发回滚；外部会转成正常的 allowed:false 结果。 */
 class QuotaExceededInTransaction extends Error {
@@ -406,8 +405,12 @@ export class PostgresStore implements Store {
     const rows = await this.db
       .insert(schema.attempts)
       .values({ id: createId("att"), examId, userId, status: "in_progress" })
+      .onConflictDoNothing()
       .returning();
-    return rows[0] as AttemptRecord;
+    if (rows[0]) return rows[0] as AttemptRecord;
+    const existing = await this.getOpenAttempt(examId, userId);
+    if (!existing) throw new Error("创建答题记录失败");
+    return existing;
   }
 
   async getAttempt(id: string): Promise<AttemptRecord | null> {
@@ -570,18 +573,6 @@ export class PostgresStore implements Store {
   }
 
   async upsertMistake(input: NewMistake): Promise<MistakeRecord> {
-    const existing = await this.db
-      .select()
-      .from(schema.mistakeItems)
-      .where(
-        and(
-          eq(schema.mistakeItems.userId, input.userId),
-          eq(schema.mistakeItems.questionId, input.questionId),
-        ),
-      )
-      .limit(1);
-    const previous = existing[0] as MistakeRecord | undefined;
-    const wrongCount = (previous?.wrongCount ?? 0) + (input.increment === false ? 0 : 1);
     const rows = await this.db
       .insert(schema.mistakeItems)
       .values({
@@ -592,7 +583,7 @@ export class PostgresStore implements Store {
         topicKey: input.topicKey,
         topicTitle: input.topicTitle,
         lastScorePercent: input.lastScorePercent,
-        wrongCount,
+        wrongCount: input.increment === false ? 0 : 1,
         lastAttemptId: input.lastAttemptId,
         updatedAt: new Date(),
       })
@@ -603,7 +594,11 @@ export class PostgresStore implements Store {
           topicKey: input.topicKey,
           topicTitle: input.topicTitle,
           lastScorePercent: input.lastScorePercent,
-          wrongCount,
+          // 用 SQL 表达式累加，避免并发收卷时“先读后写”丢一次错误计数。
+          wrongCount:
+            input.increment === false
+              ? sql`${schema.mistakeItems.wrongCount}`
+              : sql`${schema.mistakeItems.wrongCount} + 1`,
           lastAttemptId: input.lastAttemptId,
           updatedAt: new Date(),
         },
@@ -751,6 +746,7 @@ export class PostgresStore implements Store {
     userId: string,
     day: string,
     model: string,
+    origin: LlmUsageOrigin,
     delta: LlmUsageDelta,
   ): Promise<LlmUsageRecord> {
     const rows = await this.db
@@ -759,6 +755,7 @@ export class PostgresStore implements Store {
         userId,
         day,
         model,
+        origin,
         calls: delta.calls ?? 0,
         inputTokens: delta.inputTokens ?? 0,
         outputTokens: delta.outputTokens ?? 0,
@@ -766,7 +763,12 @@ export class PostgresStore implements Store {
       })
       // 用 SQL 表达式自增，避免「先读后写」在并发下丢计数
       .onConflictDoUpdate({
-        target: [schema.llmUsage.userId, schema.llmUsage.day, schema.llmUsage.model],
+        target: [
+          schema.llmUsage.userId,
+          schema.llmUsage.day,
+          schema.llmUsage.model,
+          schema.llmUsage.origin,
+        ],
         set: {
           calls: sql`${schema.llmUsage.calls} + ${delta.calls ?? 0}`,
           inputTokens: sql`${schema.llmUsage.inputTokens} + ${delta.inputTokens ?? 0}`,
@@ -787,7 +789,7 @@ export class PostgresStore implements Store {
     return rows as LlmUsageRecord[];
   }
 
-  async sumLlmUsageForDay(day: string): Promise<LlmUsageDelta> {
+  async sumLlmUsageForDay(day: string, origin: LlmUsageOrigin = "platform"): Promise<LlmUsageDelta> {
     const rows = await this.db
       .select({
         calls: sql<number>`coalesce(sum(${schema.llmUsage.calls}), 0)::int`,
@@ -796,7 +798,7 @@ export class PostgresStore implements Store {
         costMicroUsd: sql<number>`coalesce(sum(${schema.llmUsage.costMicroUsd}), 0)::int`,
       })
       .from(schema.llmUsage)
-      .where(eq(schema.llmUsage.day, day));
+      .where(and(eq(schema.llmUsage.day, day), eq(schema.llmUsage.origin, origin)));
     const row = rows[0];
     return {
       calls: row?.calls ?? 0,
@@ -836,6 +838,16 @@ export class PostgresStore implements Store {
 
   async deleteUserData(userId: string): Promise<void> {
     await this.db.transaction(async (tx) => {
+      const userRows = await tx
+        .select({ email: schema.users.email })
+        .from(schema.users)
+        .where(eq(schema.users.id, userId))
+        .limit(1);
+      const email = userRows[0]?.email;
+      if (email) {
+        // login_challenges 没有 user_id；按邮箱清理，保证“删除账号清空全部数据”成立。
+        await tx.delete(schema.loginChallenges).where(eq(schema.loginChallenges.email, email));
+      }
       await tx.delete(schema.feedbackReports).where(eq(schema.feedbackReports.userId, userId));
       await tx.delete(schema.llmUsage).where(eq(schema.llmUsage.userId, userId));
       await tx.delete(schema.reviewLogs).where(eq(schema.reviewLogs.userId, userId));

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { ChatProvider } from "@/lib/llm/provider";
+import { UNTRUSTED_MATERIAL_NOTICE } from "@/lib/security/untrusted";
 import {
   DecisionEngineError,
   type DecisionAnswer,
@@ -21,6 +22,7 @@ const payloadSchema = z.object({ answers: z.record(z.string(), answerSchema) });
 
 export const LLM_JUDGE_SYSTEM_PROMPT = [
   "你是一个判定器：只做类型化的概率判断，不写解释、不写散文。",
+  UNTRUSTED_MATERIAL_NOTICE,
   "输入包含 state（被判定材料）与 questions（一组问题）。",
   "对每个问题返回一个答案对象：",
   '- noul：{"type":"noul","noul":0..1}，表示命题为真的概率。',
@@ -80,6 +82,8 @@ export class LLMJudgeEngine implements DecisionEngine {
         engineId: this.id,
         retryable: true,
         cause: error,
+        usage: response.usage,
+        model: response.model,
       });
     }
 
@@ -88,6 +92,8 @@ export class LLMJudgeEngine implements DecisionEngine {
       throw new DecisionEngineError(`LLM 判定输出结构不合法：${parsed.error.message}`, {
         engineId: this.id,
         retryable: true,
+        usage: response.usage,
+        model: response.model,
       });
     }
 
@@ -125,6 +131,8 @@ export class LLMJudgeEngine implements DecisionEngine {
       throw new DecisionEngineError(`LLM 判定缺少答案：${missing.join(", ")}`, {
         engineId: this.id,
         retryable: true,
+        usage: response.usage,
+        model: response.model,
       });
     }
 

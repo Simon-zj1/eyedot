@@ -73,6 +73,18 @@ describe("模型消费上限", () => {
     await expect(assertWithinSpendCap(user.id)).rejects.toBeInstanceOf(SpendCapExceededError);
   });
 
+  it("BYOK 用量不计入平台熔断，也不占个人平台消费上限", async () => {
+    await recordChatUsage(
+      user.id,
+      [{ model: "gpt-4o", inputTokens: 4_000_000, outputTokens: 0 }],
+      "byok",
+    );
+    const platform = await platformSpendStatus();
+    expect(platform.usedMicroUsd).toBe(0);
+    const own = await spendStatus(user.id);
+    expect(own.usedMicroUsd).toBe(0);
+  });
+
   it("出题链路上真的挂了闸门，而不只是定义了一个没人调用的函数", async () => {
     // 把注入的出题器标记为「算平台额度」，这样它就会走到额度与消费上限两道闸门
     setGenerationProviderOverride(new HeuristicGenerationProvider(), { countsAgainstQuota: true });

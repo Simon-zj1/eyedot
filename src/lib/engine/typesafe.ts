@@ -180,6 +180,10 @@ export class TypeSafeEngine implements DecisionEngine {
         throw new DecisionEngineError(`TypeSafe 缺少或无法解析的答案：${missing.join(", ")}`, {
           engineId: this.id,
           retryable: true,
+          usage: body.usage
+            ? { inputTokens: body.usage.input_tokens, outputTokens: body.usage.output_tokens }
+            : undefined,
+          model: body.model ?? this.model,
         });
       }
 

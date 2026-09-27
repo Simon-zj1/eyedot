@@ -25,6 +25,9 @@ try {
   if (body.auth?.emailDelivery === "none") {
     problems.push("登录邮件通道未配置，生产环境无法签发新会话");
   }
+  if (body.auth && body.auth.sessionSecretConfigured === false) {
+    problems.push("SESSION_SECRET 未配置，生产环境拒绝使用公开开发密钥");
+  }
   if (body.engines?.judge !== "typesafe") {
     problems.push(`判定引擎=${body.engines?.judge}，应为 typesafe`);
   }

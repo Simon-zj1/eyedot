@@ -14,6 +14,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { JUDGE_ACCURACY_GATE } from "../src/lib/config";
 import { resolveDecisionEngine } from "../src/lib/engine/index";
 import { LexicalJudgeEngine } from "../src/lib/engine/lexical";
 import { TypeSafeEngine } from "../src/lib/engine/typesafe";
@@ -230,7 +231,7 @@ async function main() {
     );
   }
 
-  const thresholds = { accuracy: 0.9, calibration: true };
+  const thresholds = { accuracy: JUDGE_ACCURACY_GATE, calibration: true };
   const passed = perPointAccuracy >= thresholds.accuracy && monotonic;
   console.log(
     `\n门槛：逐点准确率 ≥ ${(thresholds.accuracy * 100).toFixed(0)}% 且校准单调 → ${

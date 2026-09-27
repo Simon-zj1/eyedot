@@ -10,6 +10,7 @@ import type {
   DecisionQuestion,
   DecisionResult,
 } from "@/lib/types";
+import { DecisionEngineError } from "@/lib/types";
 
 export type EngineMode = "byok" | "platform" | "offline";
 
@@ -56,7 +57,22 @@ class RecordingDecisionEngine implements DecisionEngine {
     questions: Record<string, DecisionQuestion>,
     options?: DecideOptions,
   ): Promise<DecisionResult> {
-    const result = await this.inner.decide(state, questions, options);
+    let result: DecisionResult;
+    try {
+      result = await this.inner.decide(state, questions, options);
+    } catch (error) {
+      if (
+        error instanceof DecisionEngineError &&
+        (error.usage?.inputTokens || error.usage?.outputTokens)
+      ) {
+        this.onUsage({
+          model: error.model ?? this.inner.model,
+          inputTokens: error.usage.inputTokens,
+          outputTokens: error.usage.outputTokens,
+        });
+      }
+      throw error;
+    }
     if (result.usage?.inputTokens || result.usage?.outputTokens) {
       this.onUsage({
         model: result.model,

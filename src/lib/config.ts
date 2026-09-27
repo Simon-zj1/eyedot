@@ -20,6 +20,17 @@ export const KEY_POINT_MIN_WEIGHT = 0.2;
 /** 主观题的代码侧扣分权重（不交给模型决定）。 */
 export const CONTRADICTION_PENALTY = 0.3;
 export const FABRICATION_PENALTY = 0.3;
+/** 单点“矛盾/编造”概率低于该值时，不生成惩罚项。 */
+export const PENALTY_MIN_PROBABILITY = 0.05;
+
+/** 主观题低于该百分比算“没掌握”，进入错题本与复习队列。 */
+export const MISTAKE_THRESHOLD_PERCENT = 60;
+
+/** 掌握度指数滑动平均的学习率。 */
+export const MASTERY_ALPHA = 0.3;
+
+/** 判定评测的最低逐点准确率门槛。 */
+export const JUDGE_ACCURACY_GATE = 0.9;
 
 export type QuestionType = "mcq" | "true_false" | "cloze" | "short_answer";
 

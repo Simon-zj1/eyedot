@@ -3,6 +3,7 @@ import {
   FABRICATION_PENALTY,
   KEY_POINT_MIN_WEIGHT,
   NOUL_STRENGTH_THRESHOLD,
+  PENALTY_MIN_PROBABILITY,
 } from "@/lib/config";
 import { strengthOf } from "@/lib/grading/objective";
 import { truncate } from "@/lib/text";
@@ -146,7 +147,7 @@ export async function gradeShortAnswer(input: SubjectiveInput): Promise<Judgment
   const contradictions = result.answers.contradicts;
   const contradictionProbability =
     contradictions?.type === "noul" ? contradictions.noul : 0.5;
-  if (contradictionProbability > 0.05) {
+  if (contradictionProbability > PENALTY_MIN_PROBABILITY) {
     penalties.push({
       kind: "contradiction",
       probability: contradictionProbability,
@@ -160,7 +161,7 @@ export async function gradeShortAnswer(input: SubjectiveInput): Promise<Judgment
 
   const fabrications = result.answers.fabricates;
   const fabricationProbability = fabrications?.type === "noul" ? fabrications.noul : 0.5;
-  if (fabricationProbability > 0.05) {
+  if (fabricationProbability > PENALTY_MIN_PROBABILITY) {
     penalties.push({
       kind: "fabrication",
       probability: fabricationProbability,

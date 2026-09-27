@@ -1,6 +1,6 @@
 import { DAILY_SPEND_CAP_MICRO_USD, PLATFORM_DAILY_SPEND_CAP_MICRO_USD } from "@/lib/config";
 import { getStore } from "@/lib/db";
-import type { LlmUsageRecord } from "@/lib/db/types";
+import type { LlmUsageOrigin, LlmUsageRecord } from "@/lib/db/types";
 import { SpendCapExceededError } from "@/lib/errors";
 import { dayKey } from "@/lib/ids";
 import {
@@ -16,7 +16,11 @@ import {
  * 聚合而不是逐条写：一次出题可能调 3 次模型，逐条写会放大写库次数，
  * 而这里的用途是看每天烧掉多少钱，按模型汇总已经够用。
  */
-export async function recordChatUsage(userId: string, events: ChatUsageEvent[]): Promise<void> {
+export async function recordChatUsage(
+  userId: string,
+  events: ChatUsageEvent[],
+  origin: LlmUsageOrigin = "platform",
+): Promise<void> {
   if (events.length === 0) return;
 
   const aggregated = new Map<
@@ -45,7 +49,7 @@ export async function recordChatUsage(userId: string, events: ChatUsageEvent[]):
   const store = getStore();
   const day = dayKey();
   for (const [model, delta] of aggregated) {
-    await store.incrementLlmUsage(userId, day, model, delta);
+    await store.incrementLlmUsage(userId, day, model, origin, delta);
   }
 }
 
@@ -71,7 +75,8 @@ export type SpendStatus = {
 };
 
 export async function spendStatus(userId: string): Promise<SpendStatus> {
-  const { total } = await todayLlmUsage(userId);
+  const records = await getStore().listLlmUsage(userId, dayKey());
+  const total = sumUsage(records.filter((record) => record.origin === "platform"));
   const used = total.costMicroUsd;
   const remaining = Math.max(0, DAILY_SPEND_CAP_MICRO_USD - used);
   return {

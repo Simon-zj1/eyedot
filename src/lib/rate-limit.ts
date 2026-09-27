@@ -74,7 +74,16 @@ export function resetRateLimits(): void {
 
 /** 从请求头取客户端标识；取不到就退回一个共享桶（宁可误伤，不可全放行）。 */
 export function clientKey(request: Request): string {
+  // 优先使用平台注入的 x-real-ip；XFF 取最后一段，避免客户端伪造最左侧值。
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
   const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
-  return request.headers.get("x-real-ip") ?? "unknown";
+  if (forwarded) {
+    const parts = forwarded
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+    if (parts.length > 0) return parts[parts.length - 1];
+  }
+  return "unknown";
 }
