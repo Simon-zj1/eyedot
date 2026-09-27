@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { ValidationError } from "@/lib/errors";
 import { detectFileKind, extractMaterialFromFile, pageAt, titleFromFileName } from "@/lib/ingest";
+import { parseSourceMap } from "@/lib/ingest/schema";
 
 const fixture = (name: string) =>
   new Uint8Array(readFileSync(fileURLToPath(new URL(`../fixtures/${name}`, import.meta.url))));
@@ -63,6 +64,33 @@ describe("PDF 解析", () => {
     await expect(
       extractMaterialFromFile({ buffer: pdf.slice(0, 200), fileName: "broken.pdf" }),
     ).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("sourceMap 边界校验", () => {
+  const base = {
+    kind: "pdf" as const,
+    fileName: "notes.pdf",
+    pageCount: 1,
+    warnings: [],
+  };
+
+  it("正常页码映射通过校验", () => {
+    expect(
+      parseSourceMap(
+        { ...base, pages: [{ page: 1, charStart: 0, charEnd: 5, charCount: 5 }] },
+        10,
+      ),
+    ).not.toBeNull();
+  });
+
+  it("越界偏移会被拒绝，避免页码静默指错", () => {
+    expect(
+      parseSourceMap(
+        { ...base, pages: [{ page: 1, charStart: 0, charEnd: 99, charCount: 99 }] },
+        10,
+      ),
+    ).toBeNull();
   });
 });
 

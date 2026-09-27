@@ -35,8 +35,20 @@ export const sourceMapSchema = z.object({
   health: healthSchema.optional(),
 });
 
-export function parseSourceMap(value: unknown): SourceMap | null {
+export function parseSourceMap(value: unknown, rawTextLength?: number): SourceMap | null {
   if (value === null || value === undefined) return null;
   const parsed = sourceMapSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
+  if (!parsed.success) return null;
+  if (typeof rawTextLength === "number") {
+    for (const page of parsed.data.pages ?? []) {
+      if (
+        page.charStart > page.charEnd ||
+        page.charEnd > rawTextLength ||
+        page.charCount > rawTextLength
+      ) {
+        return null;
+      }
+    }
+  }
+  return parsed.data;
 }

@@ -31,7 +31,10 @@ export async function POST(request: NextRequest) {
       title: body.title ?? "",
       rawText: body.rawText ?? "",
       // 上传解析的页码映射由客户端回传，必须校验后再存
-      sourceMap: parseSourceMap(body.sourceMap),
+      sourceMap: parseSourceMap(
+        body.sourceMap,
+        typeof body.rawText === "string" ? body.rawText.length : undefined,
+      ),
     });
     return NextResponse.json({ material: { id: material.id, title: material.title } }, { status: 201 });
   } catch (error) {

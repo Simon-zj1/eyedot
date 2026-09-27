@@ -7,6 +7,16 @@ export type LoginCodeDelivery = {
   devCode?: string;
 };
 
+export type EmailDeliveryMode = "webhook" | "resend" | "console" | "none";
+
+/** 供健康检查阅读：只返回模式，不返回任何密钥或地址。 */
+export function emailDeliveryMode(): EmailDeliveryMode {
+  if (env("AUTH_EMAIL_WEBHOOK_URL")) return "webhook";
+  if (env("RESEND_API_KEY") && env("AUTH_EMAIL_FROM")) return "resend";
+  if (process.env.NODE_ENV !== "production" || env("AUTH_DEV_MODE") === "1") return "console";
+  return "none";
+}
+
 function subject(): string {
   return "登录验证码";
 }
@@ -45,8 +55,9 @@ export async function deliverLoginCode(
   email: string,
   code: string,
 ): Promise<LoginCodeDelivery> {
-  const webhookUrl = env("AUTH_EMAIL_WEBHOOK_URL");
-  if (webhookUrl) {
+  const mode = emailDeliveryMode();
+  if (mode === "webhook") {
+    const webhookUrl = env("AUTH_EMAIL_WEBHOOK_URL")!;
     const token = env("AUTH_EMAIL_WEBHOOK_TOKEN");
     await postJson(
       webhookUrl,
@@ -56,9 +67,9 @@ export async function deliverLoginCode(
     return { provider: "webhook" };
   }
 
-  const resendKey = env("RESEND_API_KEY");
-  const from = env("AUTH_EMAIL_FROM");
-  if (resendKey && from) {
+  if (mode === "resend") {
+    const resendKey = env("RESEND_API_KEY")!;
+    const from = env("AUTH_EMAIL_FROM")!;
     await postJson(
       "https://api.resend.com/emails",
       { from, to: email, subject: subject(), text: textFor(code) },
@@ -67,7 +78,7 @@ export async function deliverLoginCode(
     return { provider: "resend" };
   }
 
-  if (process.env.NODE_ENV !== "production" || env("AUTH_DEV_MODE") === "1") {
+  if (mode === "console") {
     console.info(`[auth] ${email} 的登录验证码：${code}`);
     return { provider: "console", devCode: code };
   }

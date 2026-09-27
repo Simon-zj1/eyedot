@@ -2,13 +2,13 @@
 
 目标：把 Web 端跑在公网上，接进个人网站作为入口。全程约 20 分钟，免费额度够用。
 
-## 当前部署状态（2026-09-25）
+## 当前部署状态（2026-09-27）
 
 | 项 | 值 |
 | --- | --- |
 | Vercel 项目 | `simon-zj1s-projects/jev-exam`（已联通 GitHub 仓库，push 自动部署） |
-| 生产地址 | https://jev-exam.vercel.app |
-| 自定义域名 | `exam.simon-zj.top`（已加到项目，等待阿里云 DNS 的 A 记录生效） |
+| 生产地址 | https://exam.simon-zj.top |
+| 自定义域名 | `exam.simon-zj.top`（已绑定并解析到 Vercel） |
 | 数据库 | Neon（通过 Vercel 市场集成接入，自动注入 `DATABASE_URL` 等变量） |
 | 已设置的环境变量 | `SESSION_SECRET`、`INITIAL_INVITE_CODES`（Production + Preview）、Neon 注入的 `DATABASE_URL` 系列 |
 | 已关闭 | Deployment Protection（Vercel Authentication 默认开启会把所有人挡在门外） |

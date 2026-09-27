@@ -44,6 +44,8 @@ npm run healthcheck -- https://exam.simon-zj.top
 
 - 接口不可达；
 - 数据层不是 Postgres；
+- 登录邮件通道未配置（`auth.emailDelivery=none`）；
+- 判定引擎不是真实的 TypeSafe Jev；
 - 判定或出题引擎掉进离线演示模式（这是线上“分数很怪”最常见的根因）。
 
 建议接入 Vercel 的 Cron（每 5 分钟一次）或 UptimeRobot / Better Stack，失败时给自己发邮件。

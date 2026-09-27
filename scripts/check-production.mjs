@@ -22,6 +22,12 @@ try {
 
   const problems = [];
   if (body.store !== "postgres") problems.push(`store=${body.store}，应为 postgres`);
+  if (body.auth?.emailDelivery === "none") {
+    problems.push("登录邮件通道未配置，生产环境无法签发新会话");
+  }
+  if (body.engines?.judge !== "typesafe") {
+    problems.push(`判定引擎=${body.engines?.judge}，应为 typesafe`);
+  }
   if (body.engines?.demoMode) problems.push("当前处于离线演示模式（未配置出题或判定 Key）");
   if (problems.length > 0) {
     for (const problem of problems) console.error(`不健康：${problem}`);

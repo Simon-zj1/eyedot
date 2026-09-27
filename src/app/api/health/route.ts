@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { emailDeliveryMode } from "@/lib/auth/mailer";
 import { storeDriver } from "@/lib/db";
 import { engineStatus } from "@/lib/services/status";
 
@@ -19,6 +20,9 @@ export async function GET() {
       ok: true,
       time: new Date().toISOString(),
       store: storeDriver(),
+      auth: {
+        emailDelivery: emailDeliveryMode(),
+      },
       engines: {
         judge: status.judgeEngine,
         judgeMode: status.judgeMode,
