@@ -38,15 +38,15 @@ function fromKeyFile() {
   }
 }
 
-const key = process.env.TYPESAFE_API_KEY?.trim() || fromEnvFile() || fromKeyFile();
+const key = process.env.TYPESAFE_API_KEY?.trim() || fromKeyFile() || fromEnvFile();
 if (!key) {
   console.error(
     [
       "没有找到 TYPESAFE_API_KEY。",
       "",
       "请选择一种隐式提供方式：",
-      "1. 写入 .env.local：TYPESAFE_API_KEY=...",
-      "2. 写入 ~/.config/jev-exam/typesafe-api-key",
+      "1. 写入 ~/.config/jev-exam/typesafe-api-key（推荐）",
+      "2. 写入 .env.local：TYPESAFE_API_KEY=...",
       "3. 在当前 shell 设置 TYPESAFE_API_KEY 后运行本脚本",
       "",
       "本脚本不会打印密钥原文。",
