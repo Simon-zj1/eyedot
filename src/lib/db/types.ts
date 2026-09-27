@@ -20,6 +20,7 @@ export type UserRecord = {
   id: string;
   email: string;
   byokEncrypted: string | null;
+  sessionVersion: number;
   createdAt: Date;
 };
 
@@ -29,6 +30,24 @@ export type InviteCodeRecord = {
   usedCount: number;
   expiresAt: Date | null;
   createdAt: Date;
+};
+
+export type LoginChallengeRecord = {
+  id: string;
+  email: string;
+  codeHash: string;
+  inviteCode: string | null;
+  expiresAt: Date;
+  consumedAt: Date | null;
+  attempts: number;
+  createdAt: Date;
+};
+
+export type NewLoginChallenge = Omit<
+  LoginChallengeRecord,
+  "id" | "createdAt" | "consumedAt" | "attempts"
+> & {
+  attempts?: number;
 };
 
 export type MaterialRecord = {
@@ -265,14 +284,24 @@ export type LlmUsageRecord = {
 };
 
 export interface Store {
+  /** 在同一个数据库事务里执行一组写操作；内存实现直接串行执行。 */
+  transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T>;
+
   createUser(email: string): Promise<UserRecord>;
   getUser(id: string): Promise<UserRecord | null>;
   getUserByEmail(email: string): Promise<UserRecord | null>;
   setUserByok(userId: string, encrypted: string | null): Promise<void>;
+  /** 让该用户所有已签发的会话失效（会话版本 +1）。 */
+  revokeUserSessions(userId: string): Promise<void>;
 
   upsertInviteCode(code: string, maxUses: number, expiresAt?: Date | null): Promise<InviteCodeRecord>;
   getInviteCode(code: string): Promise<InviteCodeRecord | null>;
   consumeInviteCode(code: string): Promise<boolean>;
+
+  createLoginChallenge(input: NewLoginChallenge): Promise<LoginChallengeRecord>;
+  getLatestLoginChallenge(email: string): Promise<LoginChallengeRecord | null>;
+  incrementLoginChallengeAttempts(id: string): Promise<number>;
+  consumeLoginChallenge(id: string): Promise<boolean>;
 
   createMaterial(input: NewMaterial): Promise<MaterialRecord>;
   getMaterial(id: string): Promise<MaterialRecord | null>;
@@ -309,7 +338,7 @@ export interface Store {
   submitAttempt(
     id: string,
     summary: { scorePercent: number; needsReviewCount: number; submittedAt: Date },
-  ): Promise<void>;
+  ): Promise<boolean>;
 
   saveJudgment(input: NewJudgment): Promise<JudgmentRecord>;
   getJudgmentByAnswer(answerId: string): Promise<JudgmentRecord | null>;

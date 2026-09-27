@@ -82,9 +82,9 @@ export async function judgeOneAnswerForUser(
   const needsEngine = question.type === "short_answer" || question.type === "cloze";
   let judgmentQuotaReserved = false;
   if (selection.countsAgainstQuota && needsEngine) {
+    await assertWithinSpendCap(user.id);
     await consumeQuota(user.id, { judgment: 1 });
     judgmentQuotaReserved = true;
-    await assertWithinSpendCap(user.id);
   }
 
   const blueprint = await store.getBlueprintById(exam.blueprintId);
@@ -93,42 +93,47 @@ export async function judgeOneAnswerForUser(
     topicSpans.set(topic.id, topic.source_spans.join("\n"));
   }
 
-  const answer = await store.saveAnswer(attempt.id, question.id, payload);
   let judgment;
   try {
     judgment = await gradeQuestion(toGeneratedQuestion(question), payload, {
       engine,
       materialExcerpt: topicSpans.get(question.topicId) ?? "",
     });
+  } catch (error) {
+    if (judgmentQuotaReserved) await refundQuota(user.id, { judgment: 1 });
+    throw error;
   } finally {
     // 判定已经调用过模型就产生了成本，即便随后写库失败也要记账
     await recordChatUsage(user.id, usage.pending);
   }
 
-  await store.saveJudgment({
-    answerId: answer.id,
-    attemptId: attempt.id,
-    questionId: question.id,
-    userId: user.id,
-    method: judgment.method,
-    score: judgment.score,
-    scorePercent: judgment.scorePercent,
-    confidence: judgment.confidence,
-    needsReview: judgment.needsReview,
-    reviewReasons: judgment.reviewReasons,
-    points: judgment.points,
-    penalties: judgment.penalties,
-    scoreLow: judgment.scoreRange?.[0] ?? null,
-    scoreHigh: judgment.scoreRange?.[1] ?? null,
-    engineId: judgment.engineId,
-    model: judgment.model,
-    latencyMs: judgment.latencyMs,
-    request: {
+  await store.transaction(async (tx) => {
+    const answer = await tx.saveAnswer(attempt.id, question.id, payload);
+    await tx.saveJudgment({
+      answerId: answer.id,
+      attemptId: attempt.id,
       questionId: question.id,
-      payload,
-      materialExcerptLength: (topicSpans.get(question.topicId) ?? "").length,
-    },
-    response: judgment.raw ?? null,
+      userId: user.id,
+      method: judgment.method,
+      score: judgment.score,
+      scorePercent: judgment.scorePercent,
+      confidence: judgment.confidence,
+      needsReview: judgment.needsReview,
+      reviewReasons: judgment.reviewReasons,
+      points: judgment.points,
+      penalties: judgment.penalties,
+      scoreLow: judgment.scoreRange?.[0] ?? null,
+      scoreHigh: judgment.scoreRange?.[1] ?? null,
+      engineId: judgment.engineId,
+      model: judgment.model,
+      latencyMs: judgment.latencyMs,
+      request: {
+        questionId: question.id,
+        payload,
+        materialExcerptLength: (topicSpans.get(question.topicId) ?? "").length,
+      },
+      response: judgment.raw ?? null,
+    });
   });
 
   if (selection.countsAgainstQuota && !judgment.usedEngine && judgmentQuotaReserved) {
@@ -161,84 +166,96 @@ export async function finalizeAttemptForUser(
   const questionIds = await store.listExamQuestionIds(exam.id);
   if (questionIds.length === 0) throw new NotFoundError("试卷中没有题目");
 
-  const attempt = await store.getOpenAttempt(exam.id, user.id);
-  if (!attempt) {
-    const submitted = (await store.listAttemptsByUser(user.id))
-      .filter((entry) => entry.examId === exam.id && entry.status === "submitted")
-      .sort((a, b) => (b.submittedAt?.getTime() ?? 0) - (a.submittedAt?.getTime() ?? 0))[0];
-    if (submitted) {
-      return {
-        attemptId: submitted.id,
-        scorePercent: submitted.scorePercent ?? 0,
-        needsReviewCount: submitted.needsReviewCount ?? 0,
-        engineId: "unknown",
-        engineMode: "platform",
-        judgedCount: questionIds.length,
-      };
+  /*
+   * 收卷必须是一个事务：提交 attempt、更新掌握度、写错题、推进复习排期要么全部成功，
+   * 要么全部回滚。否则并发请求会重复累计掌握度，部分失败会留下半套学习状态。
+   */
+  const finalized = await store.transaction(async (tx) => {
+    const attempt = await tx.getOpenAttempt(exam.id, user.id);
+    if (!attempt) return null;
+
+    const questions = await tx.getQuestions(questionIds);
+    const judgments = await tx.listJudgmentsByAttempt(attempt.id);
+    if (judgments.length === 0) throw new ValidationError("还没有任何判定结果，请先提交作答");
+
+    const averageScore = judgments.length
+      ? Math.round(
+          (judgments.reduce((sum, judgment) => sum + judgment.score, 0) / judgments.length) * 100,
+        )
+      : 0;
+    const needsReviewCount = judgments.filter((judgment) => judgment.needsReview).length;
+
+    // 条件更新只允许 in_progress -> submitted 一次；并发第二个请求会在这里拿到 false。
+    const claimed = await tx.submitAttempt(attempt.id, {
+      scorePercent: averageScore,
+      needsReviewCount,
+      submittedAt: new Date(),
+    });
+    if (!claimed) return null;
+
+    const judgmentByQuestion = new Map(
+      judgments.map((judgment) => [judgment.questionId, judgment]),
+    );
+    for (const question of questions) {
+      const judgment = judgmentByQuestion.get(question.id);
+      if (!judgment) continue;
+
+      // 待复核的题目不计入掌握度，避免用不确定的分数误导用户。
+      if (!judgment.needsReview) {
+        await tx.applyMastery(
+          user.id,
+          topicKeyOf(question.topicTitle),
+          question.topicTitle,
+          judgment.score,
+        );
+      }
+
+      if (judgment.scorePercent < MISTAKE_THRESHOLD_PERCENT) {
+        await tx.upsertMistake({
+          userId: user.id,
+          questionId: question.id,
+          materialId: question.materialId,
+          topicKey: topicKeyOf(question.topicTitle),
+          topicTitle: question.topicTitle,
+          lastScorePercent: judgment.scorePercent,
+          lastAttemptId: attempt.id,
+          increment: true,
+        });
+      } else {
+        await tx.deleteMistake(user.id, question.id);
+      }
     }
-    throw new NotFoundError("没有进行中的答题记录");
-  }
 
-  const questions = await store.getQuestions(questionIds);
-  const judgments = await store.listJudgmentsByAttempt(attempt.id);
-  if (judgments.length === 0) throw new ValidationError("还没有任何判定结果，请先提交作答");
+    // 失分的题目进入复习队列；已在队列里的题目按本次结果推进排期
+    await syncReviewsFromAttempt(user, attempt.id, tx);
 
-  const judgmentByQuestion = new Map(judgments.map((judgment) => [judgment.questionId, judgment]));
-  const scores = judgments.map((judgment) => judgment.score);
-
-  for (const question of questions) {
-    const judgment = judgmentByQuestion.get(question.id);
-    if (!judgment) continue;
-
-    // 待复核的题目不计入掌握度，避免用不确定的分数误导用户。
-    if (!judgment.needsReview) {
-      await store.applyMastery(
-        user.id,
-        topicKeyOf(question.topicTitle),
-        question.topicTitle,
-        judgment.score,
-      );
-    }
-
-    if (judgment.scorePercent < MISTAKE_THRESHOLD_PERCENT) {
-      await store.upsertMistake({
-        userId: user.id,
-        questionId: question.id,
-        materialId: question.materialId,
-        topicKey: topicKeyOf(question.topicTitle),
-        topicTitle: question.topicTitle,
-        lastScorePercent: judgment.scorePercent,
-        lastAttemptId: attempt.id,
-        increment: true,
-      });
-    } else {
-      await store.deleteMistake(user.id, question.id);
-    }
-  }
-
-  const averageScore = scores.length
-    ? Math.round((scores.reduce((sum, value) => sum + value, 0) / scores.length) * 100)
-    : 0;
-  const needsReviewCount = judgments.filter((judgment) => judgment.needsReview).length;
-
-  await store.submitAttempt(attempt.id, {
-    scorePercent: averageScore,
-    needsReviewCount,
-    submittedAt: new Date(),
+    const engineId = judgments[0]?.engineId ?? "unknown";
+    return {
+      attemptId: attempt.id,
+      scorePercent: averageScore,
+      needsReviewCount,
+      engineId,
+      engineMode: engineId === "typesafe" ? "platform" : "offline",
+      judgedCount: judgments.length,
+    } satisfies SubmitResult;
   });
 
-  // 失分的题目进入复习队列；已在队列里的题目按本次结果推进排期
-  await syncReviewsFromAttempt(user, attempt.id);
+  if (finalized) return finalized;
 
-  const engineId = judgments[0]?.engineId ?? "unknown";
-  return {
-    attemptId: attempt.id,
-    scorePercent: averageScore,
-    needsReviewCount,
-    engineId,
-    engineMode: engineId === "typesafe" ? "platform" : "offline",
-    judgedCount: judgments.length,
-  };
+  const submitted = (await store.listAttemptsByUser(user.id))
+    .filter((entry) => entry.examId === exam.id && entry.status === "submitted")
+    .sort((a, b) => (b.submittedAt?.getTime() ?? 0) - (a.submittedAt?.getTime() ?? 0))[0];
+  if (submitted) {
+    return {
+      attemptId: submitted.id,
+      scorePercent: submitted.scorePercent ?? 0,
+      needsReviewCount: submitted.needsReviewCount ?? 0,
+      engineId: "unknown",
+      engineMode: "platform",
+      judgedCount: questionIds.length,
+    };
+  }
+  throw new NotFoundError("没有进行中的答题记录");
 }
 
 /** 一次性作答：逐题判定 + 收卷（HTTP 与 CLI 的兼容入口）。 */

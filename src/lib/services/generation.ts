@@ -98,8 +98,8 @@ export async function createExamForMaterial(
     onChatUsage: usage.onChatUsage,
   });
   if (countsAgainstQuota) {
-    await consumeQuota(user.id, { question: count });
     await assertWithinSpendCap(user.id);
+    await consumeQuota(user.id, { question: count });
   }
 
   let generated;
@@ -138,20 +138,28 @@ export async function createExamForMaterial(
     };
   });
 
-  await store.createQuestions(records);
-
-  const exam = await store.createExam(
-    {
-      userId: user.id,
-      materialId: material.id,
-      blueprintId,
-      title: `${material.title} · ${new Date().toLocaleDateString("zh-CN")}`,
-      kind: "generated",
-      config: { mix, count: records.length, topicIds: topics.map((topic) => topic.id) },
-      generatorModel: generated.model,
-    },
-    records.map((record, index) => ({ questionId: record.id, position: index })),
-  );
+  let exam: ExamRecord;
+  try {
+    exam = await store.transaction(async (tx) => {
+      await tx.createQuestions(records);
+      return tx.createExam(
+        {
+          userId: user.id,
+          materialId: material.id,
+          blueprintId,
+          title: `${material.title} · ${new Date().toLocaleDateString("zh-CN")}`,
+          kind: "generated",
+          config: { mix, count: records.length, topicIds: topics.map((topic) => topic.id) },
+          generatorModel: generated.model,
+        },
+        records.map((record, index) => ({ questionId: record.id, position: index })),
+      );
+    });
+  } catch (error) {
+    // 生成已经消耗过模型成本，但题目没有落库，额度必须退回，否则用户白扣一次。
+    if (countsAgainstQuota) await refundQuota(user.id, { question: count });
+    throw error;
+  }
 
   if (countsAgainstQuota && records.length < count) {
     await refundQuota(user.id, { question: count - records.length });

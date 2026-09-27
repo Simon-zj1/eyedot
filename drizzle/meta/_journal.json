@@ -36,6 +36,13 @@
       "when": 1790482825173,
       "tag": "0004_lethal_archangel",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790501732399,
+      "tag": "0005_white_lady_mastermind",
+      "breakpoints": true
     }
   ]
 }

@@ -3,8 +3,13 @@ import { LexicalJudgeEngine } from "@/lib/engine/lexical";
 import { LLMJudgeEngine } from "@/lib/engine/llm-judge";
 import { TypeSafeEngine } from "@/lib/engine/typesafe";
 import { resolveChatProvider, resolvePlatformChatProvider } from "@/lib/llm/provider";
-import { RecordingChatProvider, type ChatUsageEvent } from "@/lib/llm/usage";
-import type { DecisionEngine } from "@/lib/types";
+import type { ChatUsageEvent } from "@/lib/llm/usage";
+import type {
+  DecideOptions,
+  DecisionEngine,
+  DecisionQuestion,
+  DecisionResult,
+} from "@/lib/types";
 
 export type EngineMode = "byok" | "platform" | "offline";
 
@@ -24,6 +29,51 @@ export type EngineContext = {
 };
 
 let globalOverride: DecisionEngine | null = null;
+
+/**
+ * 统一记录判定引擎的 usage。
+ *
+ * 之前的缺口是 TypeSafeEngine 明明返回了 usage，却没有接进成本表；
+ * 出题和问答会记账，主观题判定这条最核心的路径反而不记账。
+ */
+class RecordingDecisionEngine implements DecisionEngine {
+  readonly id: string;
+  readonly inner: DecisionEngine;
+  private readonly onUsage: (event: ChatUsageEvent) => void;
+
+  constructor(inner: DecisionEngine, onUsage: (event: ChatUsageEvent) => void) {
+    this.inner = inner;
+    this.id = inner.id;
+    this.onUsage = onUsage;
+  }
+
+  get model(): string {
+    return this.inner.model;
+  }
+
+  async decide(
+    state: string | Record<string, unknown>,
+    questions: Record<string, DecisionQuestion>,
+    options?: DecideOptions,
+  ): Promise<DecisionResult> {
+    const result = await this.inner.decide(state, questions, options);
+    if (result.usage?.inputTokens || result.usage?.outputTokens) {
+      this.onUsage({
+        model: result.model,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+      });
+    }
+    return result;
+  }
+}
+
+function recordDecisionUsage(
+  engine: DecisionEngine,
+  onUsage?: (event: ChatUsageEvent) => void,
+): DecisionEngine {
+  return onUsage ? new RecordingDecisionEngine(engine, onUsage) : engine;
+}
 
 /** 测试/评测专用：强制所有判定走同一个引擎。 */
 export function setDecisionEngineOverride(engine: DecisionEngine | null): void {
@@ -48,11 +98,14 @@ export function resolveDecisionEngine(context: EngineContext = {}): EngineSelect
   const judge = context.byok?.judge;
   if (judge?.apiKey) {
     return {
-      engine: new TypeSafeEngine({
-        apiKey: judge.apiKey,
-        baseUrl: judge.baseUrl,
-        model: judge.model,
-      }),
+      engine: recordDecisionUsage(
+        new TypeSafeEngine({
+          apiKey: judge.apiKey,
+          baseUrl: judge.baseUrl,
+          model: judge.model,
+        }),
+        context.onChatUsage,
+      ),
       mode: "byok",
       countsAgainstQuota: false,
     };
@@ -60,16 +113,17 @@ export function resolveDecisionEngine(context: EngineContext = {}): EngineSelect
 
   const platform = TypeSafeEngine.fromEnv();
   if (platform) {
-    return { engine: platform, mode: "platform", countsAgainstQuota: true };
+    return {
+      engine: recordDecisionUsage(platform, context.onChatUsage),
+      mode: "platform",
+      countsAgainstQuota: true,
+    };
   }
 
   const chatProvider = resolvePlatformChatProvider();
   if (chatProvider) {
-    const provider = context.onChatUsage
-      ? new RecordingChatProvider(chatProvider, context.onChatUsage)
-      : chatProvider;
     return {
-      engine: new LLMJudgeEngine(provider),
+      engine: recordDecisionUsage(new LLMJudgeEngine(chatProvider), context.onChatUsage),
       mode: "platform",
       countsAgainstQuota: true,
     };

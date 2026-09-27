@@ -14,6 +14,7 @@ import type {
   JudgmentRecord,
   LlmUsageDelta,
   LlmUsageRecord,
+  LoginChallengeRecord,
   MasteryRecord,
   MaterialRecord,
   MistakeRecord,
@@ -21,6 +22,7 @@ import type {
   NewExam,
   NewFeedback,
   NewJudgment,
+  NewLoginChallenge,
   NewMaterial,
   NewMistake,
   NewQuestion,
@@ -40,6 +42,14 @@ export type AnyPgDatabase = PgDatabase<any, any, any>;
 
 const MASTERY_ALPHA = 0.3;
 
+/** 事务内部用于触发回滚；外部会转成正常的 allowed:false 结果。 */
+class QuotaExceededInTransaction extends Error {
+  constructor(readonly kind: QuotaKind) {
+    super(`quota exceeded: ${kind}`);
+    this.name = "QuotaExceededInTransaction";
+  }
+}
+
 /**
  * Postgres（Drizzle）实现。通过 PgDatabase 泛型同时兼容 node-postgres 与 PGlite，
  * 后者让数据库层可以在测试里真实执行。
@@ -49,6 +59,10 @@ export class PostgresStore implements Store {
 
   constructor(db: AnyPgDatabase) {
     this.db = db;
+  }
+
+  async transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T> {
+    return this.db.transaction(async (tx) => fn(new PostgresStore(tx as AnyPgDatabase)));
   }
 
   async reset(): Promise<void> {
@@ -67,6 +81,7 @@ export class PostgresStore implements Store {
     await this.db.delete(schema.questions);
     await this.db.delete(schema.examBlueprints);
     await this.db.delete(schema.materials);
+    await this.db.delete(schema.loginChallenges);
     await this.db.delete(schema.inviteCodes);
     await this.db.delete(schema.users);
   }
@@ -104,6 +119,13 @@ export class PostgresStore implements Store {
     await this.db
       .update(schema.users)
       .set({ byokEncrypted: encrypted })
+      .where(eq(schema.users.id, userId));
+  }
+
+  async revokeUserSessions(userId: string): Promise<void> {
+    await this.db
+      .update(schema.users)
+      .set({ sessionVersion: sql`${schema.users.sessionVersion} + 1` })
       .where(eq(schema.users.id, userId));
   }
 
@@ -150,6 +172,59 @@ export class PostgresStore implements Store {
         ),
       )
       .returning({ code: schema.inviteCodes.code });
+    return rows.length > 0;
+  }
+
+  async createLoginChallenge(input: NewLoginChallenge): Promise<LoginChallengeRecord> {
+    const rows = await this.db
+      .insert(schema.loginChallenges)
+      .values({
+        id: createId("lgc"),
+        email: normalizeEmail(input.email),
+        codeHash: input.codeHash,
+        inviteCode: input.inviteCode,
+        expiresAt: input.expiresAt,
+        attempts: input.attempts ?? 0,
+      })
+      .returning();
+    return rows[0] as LoginChallengeRecord;
+  }
+
+  async getLatestLoginChallenge(email: string): Promise<LoginChallengeRecord | null> {
+    const rows = await this.db
+      .select()
+      .from(schema.loginChallenges)
+      .where(
+        and(
+          eq(schema.loginChallenges.email, normalizeEmail(email)),
+          isNull(schema.loginChallenges.consumedAt),
+        ),
+      )
+      .orderBy(desc(schema.loginChallenges.createdAt))
+      .limit(1);
+    return (rows[0] as LoginChallengeRecord | undefined) ?? null;
+  }
+
+  async incrementLoginChallengeAttempts(id: string): Promise<number> {
+    const rows = await this.db
+      .update(schema.loginChallenges)
+      .set({ attempts: sql`${schema.loginChallenges.attempts} + 1` })
+      .where(eq(schema.loginChallenges.id, id))
+      .returning({ attempts: schema.loginChallenges.attempts });
+    return rows[0]?.attempts ?? 0;
+  }
+
+  async consumeLoginChallenge(id: string): Promise<boolean> {
+    const rows = await this.db
+      .update(schema.loginChallenges)
+      .set({ consumedAt: new Date() })
+      .where(
+        and(
+          eq(schema.loginChallenges.id, id),
+          isNull(schema.loginChallenges.consumedAt),
+        ),
+      )
+      .returning({ id: schema.loginChallenges.id });
     return rows.length > 0;
   }
 
@@ -396,8 +471,8 @@ export class PostgresStore implements Store {
   async submitAttempt(
     id: string,
     summary: { scorePercent: number; needsReviewCount: number; submittedAt: Date },
-  ): Promise<void> {
-    await this.db
+  ): Promise<boolean> {
+    const rows = await this.db
       .update(schema.attempts)
       .set({
         status: "submitted",
@@ -405,7 +480,9 @@ export class PostgresStore implements Store {
         scorePercent: summary.scorePercent,
         needsReviewCount: summary.needsReviewCount,
       })
-      .where(eq(schema.attempts.id, id));
+      .where(and(eq(schema.attempts.id, id), eq(schema.attempts.status, "in_progress")))
+      .returning({ id: schema.attempts.id });
+    return rows.length > 0;
   }
 
   async saveJudgment(input: NewJudgment): Promise<JudgmentRecord> {
@@ -459,31 +536,23 @@ export class PostgresStore implements Store {
     topicTitle: string,
     score: number,
   ): Promise<MasteryRecord> {
-    const existing = await this.db
-      .select()
-      .from(schema.mastery)
-      .where(and(eq(schema.mastery.userId, userId), eq(schema.mastery.topicKey, topicKey)))
-      .limit(1);
-    const previous = existing[0] as MasteryRecord | undefined;
-    const value = previous
-      ? previous.value * (1 - MASTERY_ALPHA) + score * MASTERY_ALPHA
-      : score;
     const rows = await this.db
       .insert(schema.mastery)
       .values({
         userId,
         topicKey,
         topicTitle,
-        value,
-        sampleCount: (previous?.sampleCount ?? 0) + 1,
+        value: score,
+        sampleCount: 1,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
         target: [schema.mastery.userId, schema.mastery.topicKey],
         set: {
-          value,
+          // 在数据库内做 EMA，避免「先读后写」在并发收卷时丢更新。
+          value: sql`${schema.mastery.value}::double precision * ${1 - MASTERY_ALPHA}::double precision + ${score}::double precision * ${MASTERY_ALPHA}::double precision`,
           topicTitle,
-          sampleCount: (previous?.sampleCount ?? 0) + 1,
+          sampleCount: sql`${schema.mastery.sampleCount} + 1`,
           updatedAt: new Date(),
         },
       })
@@ -612,40 +681,48 @@ export class PostgresStore implements Store {
     day: string,
     costs: Partial<Record<QuotaKind, number>>,
   ): Promise<{ allowed: boolean; exceeded?: QuotaKind; usage: UsageSnapshot }> {
-    return this.db.transaction(async (tx) => {
-      const transactionalDb = tx as AnyPgDatabase;
-      for (const [kind, amount] of Object.entries(costs) as [QuotaKind, number][]) {
-        if (!amount || amount <= 0) continue;
-        // 先保证该用户/天/类别有一行，再在同一事务里用条件更新原子判断是否超限。
-        await tx
-          .insert(schema.usageCounters)
-          .values({ userId, day, kind, amount: 0 })
-          .onConflictDoNothing();
-        const rows = await tx
-          .update(schema.usageCounters)
-          .set({ amount: sql`${schema.usageCounters.amount} + ${amount}` })
-          .where(
-            and(
-              eq(schema.usageCounters.userId, userId),
-              eq(schema.usageCounters.day, day),
-              eq(schema.usageCounters.kind, kind),
-              lte(sql`${schema.usageCounters.amount} + ${amount}`, QUOTA_LIMITS[kind]),
-            ),
-          )
-          .returning({ amount: schema.usageCounters.amount });
-        if (rows.length === 0) {
-          return {
-            allowed: false,
-            exceeded: kind,
-            usage: await this.getUsageFrom(transactionalDb, userId, day),
-          };
+    try {
+      return await this.db.transaction(async (tx) => {
+        const transactionalDb = tx as AnyPgDatabase;
+        for (const [kind, amount] of Object.entries(costs) as [QuotaKind, number][]) {
+          if (!amount || amount <= 0) continue;
+          // 先保证该用户/天/类别有一行，再在同一事务里用条件更新原子判断是否超限。
+          await tx
+            .insert(schema.usageCounters)
+            .values({ userId, day, kind, amount: 0 })
+            .onConflictDoNothing();
+          const rows = await tx
+            .update(schema.usageCounters)
+            .set({ amount: sql`${schema.usageCounters.amount} + ${amount}` })
+            .where(
+              and(
+                eq(schema.usageCounters.userId, userId),
+                eq(schema.usageCounters.day, day),
+                eq(schema.usageCounters.kind, kind),
+                lte(sql`${schema.usageCounters.amount} + ${amount}`, QUOTA_LIMITS[kind]),
+              ),
+            )
+            .returning({ amount: schema.usageCounters.amount });
+          if (rows.length === 0) {
+            // 抛异常才会回滚事务；直接 return 会把前面类别的自增提交掉。
+            throw new QuotaExceededInTransaction(kind);
+          }
         }
+        return {
+          allowed: true,
+          usage: await this.getUsageFrom(transactionalDb, userId, day),
+        };
+      });
+    } catch (error) {
+      if (error instanceof QuotaExceededInTransaction) {
+        return {
+          allowed: false,
+          exceeded: error.kind,
+          usage: await this.getUsage(userId, day),
+        };
       }
-      return {
-        allowed: true,
-        usage: await this.getUsageFrom(transactionalDb, userId, day),
-      };
-    });
+      throw error;
+    }
   }
 
   async refundUsage(

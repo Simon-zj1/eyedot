@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loginWithInvite } from "@/lib/auth/session";
 import { getStore } from "@/lib/db";
 import { setDecisionEngineOverride } from "@/lib/engine";
 import { ForbiddenError } from "@/lib/errors";
@@ -11,7 +10,14 @@ import { createMaterialForUser, deleteMaterialForUser } from "@/lib/services/mat
 import { submitAttemptForUser } from "@/lib/services/attempts";
 import { listMasteryForUser, listMistakeGroups } from "@/lib/services/mistakes";
 import { getAttemptResultForUser, listExamSummaries } from "@/lib/services/results";
-import { FakeEngine, SAMPLE_MATERIAL, noul, resetOverrides, useMemoryStore } from "../helpers";
+import {
+  FakeEngine,
+  SAMPLE_MATERIAL,
+  loginWithInvite,
+  noul,
+  resetOverrides,
+  useMemoryStore,
+} from "../helpers";
 
 function flowEngine() {
   return new FakeEngine((_state, questions) => {

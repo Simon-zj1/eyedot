@@ -1,6 +1,6 @@
 {
   "name": "jev-exam",
-  "version": "0.9.2",
+  "version": "0.10.0",
   "type": "module",
   "description": "把上传的学习材料变成可自动判分的自助考试：出题交给 LLM，判定交给决策模型（TypeSafe Jev），报告与覆盖率可逐条核对。",
   "license": "MIT",
@@ -61,6 +61,7 @@
     "test:watch": "vitest",
     "smoke": "node scripts/smoke.mjs",
     "healthcheck": "node scripts/check-production.mjs",
+    "set:jev-key": "node scripts/set-vercel-secret.mjs",
     "eval:judge": "tsx scripts/eval-judge.ts",
     "benchmark": "tsx scripts/eval-judge.ts --engine offline --json docs/benchmark-results.json",
     "feedback:golden": "tsx scripts/export-feedback.ts",

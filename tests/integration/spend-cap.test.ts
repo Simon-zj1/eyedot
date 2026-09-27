@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loginWithInvite } from "@/lib/auth/session";
 import { DAILY_SPEND_CAP_MICRO_USD, PLATFORM_DAILY_SPEND_CAP_MICRO_USD } from "@/lib/config";
 import { setDecisionEngineOverride } from "@/lib/engine";
 import { setGenerationProviderOverride } from "@/lib/generator";
@@ -14,7 +13,15 @@ import {
   recordChatUsage,
   spendStatus,
 } from "@/lib/services/usage";
-import { FakeChatProvider, FakeEngine, SAMPLE_MATERIAL, noul, resetOverrides, useMemoryStore } from "../helpers";
+import {
+  FakeChatProvider,
+  FakeEngine,
+  SAMPLE_MATERIAL,
+  loginWithInvite,
+  noul,
+  resetOverrides,
+  useMemoryStore,
+} from "../helpers";
 
 describe("模型消费上限", () => {
   let store: ReturnType<typeof useMemoryStore>;

@@ -74,8 +74,8 @@ function overdueDays(dueAt: Date, now: Date): number {
 export async function syncReviewsFromAttempt(
   user: UserRecord,
   attemptId: string,
+  store = getStore(),
 ): Promise<{ added: number; advanced: number; kept: number }> {
-  const store = getStore();
   const judgments = await store.listJudgmentsByAttempt(attemptId);
   if (judgments.length === 0) return { added: 0, advanced: 0, kept: 0 };
 
@@ -229,9 +229,9 @@ export async function gradeReviewAnswer(
   const needsEngine = question.type === "short_answer" || question.type === "cloze";
   let judgmentQuotaReserved = false;
   if (selection.countsAgainstQuota && needsEngine) {
+    await assertWithinSpendCap(user.id);
     await consumeQuota(user.id, { judgment: 1 });
     judgmentQuotaReserved = true;
-    await assertWithinSpendCap(user.id);
   }
 
   const blueprint = await store.getBlueprintById(question.blueprintId);
@@ -244,6 +244,9 @@ export async function gradeReviewAnswer(
       engine: selection.engine,
       materialExcerpt,
     });
+  } catch (error) {
+    if (judgmentQuotaReserved) await refundQuota(user.id, { judgment: 1 });
+    throw error;
   } finally {
     await recordChatUsage(user.id, usage.pending);
   }

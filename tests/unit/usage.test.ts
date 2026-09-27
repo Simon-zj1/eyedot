@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { DAILY_SPEND_CAP_MICRO_USD } from "@/lib/config";
+import { resolveDecisionEngine, setDecisionEngineOverride } from "@/lib/engine";
 import {
   DEFAULT_PRICE,
   estimateCostMicroUsd,
@@ -7,6 +8,11 @@ import {
   priceFor,
   sumUsage,
 } from "@/lib/llm/usage";
+
+afterEach(() => {
+  setDecisionEngineOverride(null);
+  delete process.env.TYPESAFE_API_KEY;
+});
 
 describe("模型成本估算", () => {
   it("按公开价折算，用微美元整数存放", () => {
@@ -48,5 +54,32 @@ describe("模型成本估算", () => {
 
   it("消费上限有一个正的默认值（否则闸门形同虚设）", () => {
     expect(DAILY_SPEND_CAP_MICRO_USD).toBeGreaterThan(0);
+  });
+
+  it("Jev 判定返回的 usage 会进入计量回调", async () => {
+    process.env.TYPESAFE_API_KEY = "test-key";
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          model: "jev-test",
+          answers: { p1: { type: "noul", noul: 0.9 } },
+          usage: { input_tokens: 123, output_tokens: 0 },
+        }),
+        { status: 200 },
+      )) as typeof fetch;
+
+    const events: { model: string; inputTokens?: number; outputTokens?: number }[] = [];
+    try {
+      const selection = resolveDecisionEngine({
+        onChatUsage: (event) => events.push(event),
+      });
+      await selection.engine.decide("state", {
+        p1: { type: "noul", instructions: "是否覆盖" },
+      });
+      expect(events).toEqual([{ model: "jev-test", inputTokens: 123, outputTokens: 0 }]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

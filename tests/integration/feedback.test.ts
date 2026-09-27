@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loginWithInvite } from "@/lib/auth/session";
 import { setDecisionEngineOverride } from "@/lib/engine";
 import { setGenerationProviderOverride } from "@/lib/generator";
 import { HeuristicGenerationProvider } from "@/lib/generator/heuristic";
@@ -10,7 +9,14 @@ import { buildFeedbackCandidates } from "@/lib/services/export";
 import { submitFeedbackForUser } from "@/lib/services/feedback";
 import { createExamForMaterial, generateOutlineForMaterial } from "@/lib/services/generation";
 import { createMaterialForUser } from "@/lib/services/materials";
-import { FakeEngine, SAMPLE_MATERIAL, noul, resetOverrides, useMemoryStore } from "../helpers";
+import {
+  FakeEngine,
+  SAMPLE_MATERIAL,
+  loginWithInvite,
+  noul,
+  resetOverrides,
+  useMemoryStore,
+} from "../helpers";
 
 describe("纠错上报与账号删除", () => {
   let store: ReturnType<typeof useMemoryStore>;

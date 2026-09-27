@@ -1,5 +1,4 @@
-import { SESSION_COOKIE, sessionFromCookieValue } from "@/lib/auth/session";
-import { getStore } from "@/lib/db";
+import { SESSION_COOKIE, sessionFromCookieValue, userFromSession } from "@/lib/auth/session";
 import type { UserRecord } from "@/lib/db/types";
 import { UnauthorizedError } from "@/lib/errors";
 
@@ -11,7 +10,7 @@ type CookieCarrier = {
 export async function userFromRequest(request: CookieCarrier): Promise<UserRecord | null> {
   const session = sessionFromCookieValue(request.cookies.get(SESSION_COOKIE)?.value);
   if (!session) return null;
-  return getStore().getUser(session.userId);
+  return userFromSession(session);
 }
 
 export async function requireUserFromRequest(request: CookieCarrier): Promise<UserRecord> {

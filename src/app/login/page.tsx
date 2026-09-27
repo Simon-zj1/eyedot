@@ -16,8 +16,8 @@ export default async function LoginPage() {
         <div className="card">
           <h1>邀请制登录</h1>
           <p className="muted small">
-            这是公开 MVP 的准入控制：已有账号直接填邮箱登录；新用户需要邀请码。
-            登录态使用 HttpOnly 签名 Cookie，密钥不会下发到浏览器。
+            已有账号和新账号都要先获取邮箱验证码；新账号的邀请码在验证码请求时填写。
+            登录态使用 HttpOnly 签名 Cookie，并带服务端会话版本，密钥不会下发到浏览器。
           </p>
           <LoginForm />
         </div>

@@ -59,7 +59,8 @@ npm run healthcheck -- https://exam.simon-zj.top
 - Preview 环境必须有独立的 `DATABASE_URL`（可以是 Neon 分支或独立 Free 项目）；
 - 不要把生产 `SESSION_SECRET` 复制给 Preview；轮换生产密钥会同时把 BYOK 密文作废。
 
-当前会话是签名 Cookie，**没有服务端撤销表**。若怀疑 `SESSION_SECRET` 泄露，立即：
+当前会话是「签名 Cookie + 用户会话版本」，可以在设置页点“退出所有设备”让旧 Cookie 立即失效。
+若怀疑 `SESSION_SECRET` 泄露，立即：
 
 1. 在 Vercel 更新 `SESSION_SECRET` 并重新部署；
 2. 告知受影响的 BYOK 用户重新填写密钥（旧密文无法用新派生密钥解密）；

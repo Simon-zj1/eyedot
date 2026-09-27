@@ -1,11 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loginWithInvite } from "@/lib/auth/session";
 import { getStore } from "@/lib/db";
 import { setChatProviderOverride } from "@/lib/llm/provider";
 import { askMaterialQuestion } from "@/lib/services/qa";
 import { createMaterialForUser } from "@/lib/services/materials";
 import { usageSnapshot } from "@/lib/quota";
-import { FakeChatProvider, resetOverrides, useMemoryStore } from "../helpers";
+import { FakeChatProvider, loginWithInvite, resetOverrides, useMemoryStore } from "../helpers";
 
 const MATERIAL = [
   "检索是 RAG 的第一阶段，决定模型能看到什么证据。",

@@ -7,6 +7,9 @@ export function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [inviteCode, setInviteCode] = useState("");
+  const [code, setCode] = useState("");
+  const [codeRequested, setCodeRequested] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -20,11 +23,25 @@ export function LoginForm() {
           const response = await fetch("/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, inviteCode }),
+            body: JSON.stringify({ email, inviteCode, code: codeRequested ? code : undefined }),
           });
-          const payload = (await response.json()) as { error?: string };
+          const payload = (await response.json()) as {
+            error?: string;
+            requested?: boolean;
+            devCode?: string;
+            provider?: string;
+          };
           if (!response.ok) {
             setError(payload.error ?? "登录失败");
+            return;
+          }
+          if (payload.requested) {
+            setCodeRequested(true);
+            setNotice(
+              payload.devCode
+                ? `验证码已生成（开发模式）：${payload.devCode}`
+                : "验证码已发送到你的邮箱，10 分钟内有效。",
+            );
             return;
           }
           router.replace("/");
@@ -56,11 +73,28 @@ export function LoginForm() {
           value={inviteCode}
           onChange={(event) => setInviteCode(event.target.value)}
           placeholder="例如 DEV-INVITE"
+          disabled={codeRequested}
         />
       </div>
+      {codeRequested ? (
+        <div className="field">
+          <label htmlFor="code">邮箱验证码</label>
+          <input
+            id="code"
+            type="text"
+            required
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={code}
+            onChange={(event) => setCode(event.target.value)}
+            placeholder="6 位数字"
+          />
+        </div>
+      ) : null}
+      {notice ? <div className="banner banner--info">{notice}</div> : null}
       {error ? <div className="banner banner--err">{error}</div> : null}
       <button className="btn-primary" type="submit" disabled={pending}>
-        {pending ? "登录中…" : "进入"}
+        {pending ? "处理中…" : codeRequested ? "验证并进入" : "获取登录验证码"}
       </button>
     </form>
   );

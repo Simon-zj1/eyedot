@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loginWithInvite } from "@/lib/auth/session";
 import { getStore } from "@/lib/db";
 import { setDecisionEngineOverride } from "@/lib/engine";
 import { setGenerationProviderOverride } from "@/lib/generator";
@@ -14,7 +13,14 @@ import {
   reviewStats,
   syncReviewsFromAttempt,
 } from "@/lib/services/reviews";
-import { FakeEngine, SAMPLE_MATERIAL, noul, resetOverrides, useMemoryStore } from "../helpers";
+import {
+  FakeEngine,
+  SAMPLE_MATERIAL,
+  loginWithInvite,
+  noul,
+  resetOverrides,
+  useMemoryStore,
+} from "../helpers";
 
 /** 判定模拟：客观题走确定性代码，主观题的高分/低分由这里控制 */
 function judgeEngine(pointProbability = 0.95) {

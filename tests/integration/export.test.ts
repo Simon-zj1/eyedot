@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { loginWithInvite } from "@/lib/auth/session";
 import { setDecisionEngineOverride } from "@/lib/engine";
 import { setGenerationProviderOverride } from "@/lib/generator";
 import { HeuristicGenerationProvider } from "@/lib/generator/heuristic";
@@ -10,7 +9,14 @@ import { buildAnkiCsv, buildBackup, buildMarkdownExport } from "@/lib/services/e
 import { createExamForMaterial, generateOutlineForMaterial } from "@/lib/services/generation";
 import { createMaterialForUser } from "@/lib/services/materials";
 import { recordChatUsage } from "@/lib/services/usage";
-import { FakeEngine, SAMPLE_MATERIAL, noul, resetOverrides, useMemoryStore } from "../helpers";
+import {
+  FakeEngine,
+  SAMPLE_MATERIAL,
+  loginWithInvite,
+  noul,
+  resetOverrides,
+  useMemoryStore,
+} from "../helpers";
 
 describe("数据导出", () => {
   let store: ReturnType<typeof useMemoryStore>;

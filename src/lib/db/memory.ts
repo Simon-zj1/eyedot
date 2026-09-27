@@ -10,6 +10,7 @@ import type {
   JudgmentRecord,
   LlmUsageDelta,
   LlmUsageRecord,
+  LoginChallengeRecord,
   MasteryRecord,
   MaterialRecord,
   MistakeRecord,
@@ -17,6 +18,7 @@ import type {
   NewExam,
   NewFeedback,
   NewJudgment,
+  NewLoginChallenge,
   NewMaterial,
   NewMistake,
   NewQuestion,
@@ -37,6 +39,7 @@ const MASTERY_ALPHA = 0.3;
 type MemoryState = {
   users: Map<string, UserRecord>;
   inviteCodes: Map<string, InviteCodeRecord>;
+  loginChallenges: Map<string, LoginChallengeRecord>;
   materials: Map<string, MaterialRecord>;
   blueprints: Map<string, BlueprintRecord>;
   questions: Map<string, QuestionRecord>;
@@ -58,6 +61,7 @@ function emptyState(): MemoryState {
   return {
     users: new Map(),
     inviteCodes: new Map(),
+    loginChallenges: new Map(),
     materials: new Map(),
     blueprints: new Map(),
     questions: new Map(),
@@ -102,6 +106,11 @@ export class MemoryStore implements Store {
     this.state = emptyState();
   }
 
+  async transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T> {
+    // 内存实现没有真实事务语义；测试里用它串行执行已经足够。
+    return fn(this);
+  }
+
   async createUser(email: string): Promise<UserRecord> {
     const normalized = normalizeEmail(email);
     const existing = await this.getUserByEmail(normalized);
@@ -110,6 +119,7 @@ export class MemoryStore implements Store {
       id: createId("usr"),
       email: normalized,
       byokEncrypted: null,
+      sessionVersion: 0,
       createdAt: new Date(),
     };
     this.state.users.set(user.id, user);
@@ -132,6 +142,12 @@ export class MemoryStore implements Store {
     const user = this.state.users.get(userId);
     if (!user) throw new Error("用户不存在");
     this.state.users.set(userId, { ...user, byokEncrypted: encrypted });
+  }
+
+  async revokeUserSessions(userId: string): Promise<void> {
+    const user = this.state.users.get(userId);
+    if (!user) throw new Error("用户不存在");
+    this.state.users.set(userId, { ...user, sessionVersion: user.sessionVersion + 1 });
   }
 
   async upsertInviteCode(
@@ -164,6 +180,42 @@ export class MemoryStore implements Store {
     if (record.expiresAt && record.expiresAt.getTime() < Date.now()) return false;
     if (record.usedCount >= record.maxUses) return false;
     this.state.inviteCodes.set(normalized, { ...record, usedCount: record.usedCount + 1 });
+    return true;
+  }
+
+  async createLoginChallenge(input: NewLoginChallenge): Promise<LoginChallengeRecord> {
+    const record: LoginChallengeRecord = {
+      ...input,
+      id: createId("lgc"),
+      consumedAt: null,
+      attempts: input.attempts ?? 0,
+      createdAt: new Date(),
+    };
+    this.state.loginChallenges.set(record.id, record);
+    return record;
+  }
+
+  async getLatestLoginChallenge(email: string): Promise<LoginChallengeRecord | null> {
+    const normalized = normalizeEmail(email);
+    return (
+      [...this.state.loginChallenges.values()]
+        .filter((challenge) => challenge.email === normalized && challenge.consumedAt === null)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0] ?? null
+    );
+  }
+
+  async incrementLoginChallengeAttempts(id: string): Promise<number> {
+    const challenge = this.state.loginChallenges.get(id);
+    if (!challenge) return 0;
+    const next = challenge.attempts + 1;
+    this.state.loginChallenges.set(id, { ...challenge, attempts: next });
+    return next;
+  }
+
+  async consumeLoginChallenge(id: string): Promise<boolean> {
+    const challenge = this.state.loginChallenges.get(id);
+    if (!challenge || challenge.consumedAt) return false;
+    this.state.loginChallenges.set(id, { ...challenge, consumedAt: new Date() });
     return true;
   }
 
@@ -366,9 +418,9 @@ export class MemoryStore implements Store {
   async submitAttempt(
     id: string,
     summary: { scorePercent: number; needsReviewCount: number; submittedAt: Date },
-  ): Promise<void> {
+  ): Promise<boolean> {
     const attempt = this.state.attempts.get(id);
-    if (!attempt) throw new Error("答题记录不存在");
+    if (!attempt || attempt.status !== "in_progress") return false;
     this.state.attempts.set(id, {
       ...attempt,
       status: "submitted",
@@ -376,6 +428,7 @@ export class MemoryStore implements Store {
       scorePercent: summary.scorePercent,
       needsReviewCount: summary.needsReviewCount,
     });
+    return true;
   }
 
   async saveJudgment(input: NewJudgment): Promise<JudgmentRecord> {

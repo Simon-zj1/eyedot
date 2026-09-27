@@ -2,6 +2,7 @@ import {
   createCipheriv,
   createDecipheriv,
   createHmac,
+  randomInt,
   randomBytes,
   scryptSync,
   timingSafeEqual,
@@ -47,6 +48,24 @@ export function verifySessionToken<T = Record<string, unknown>>(token: string): 
   } catch {
     return null;
   }
+}
+
+/** 生成 6 位数字验证码；使用 CSPRNG，避免 Math.random 的可预测性。 */
+export function generateLoginCode(): string {
+  return String(randomInt(0, 1_000_000)).padStart(6, "0");
+}
+
+/** 邮箱 + 验证码的 HMAC；只存哈希，不存明文验证码。 */
+export function hashLoginCode(email: string, code: string): string {
+  return createHmac("sha256", signingKey())
+    .update(`${email.toLowerCase()}:${code}`)
+    .digest("base64url");
+}
+
+export function verifyLoginCodeHash(email: string, code: string, expected: string): boolean {
+  const actual = Buffer.from(hashLoginCode(email, code));
+  const target = Buffer.from(expected);
+  return actual.length === target.length && timingSafeEqual(actual, target);
 }
 
 /** AES-256-GCM 加密 BYOK 密钥，格式 v1:<iv>:<tag>:<ciphertext>（base64url）。 */

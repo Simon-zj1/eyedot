@@ -1,5 +1,6 @@
 import { MemoryStore } from "@/lib/db/memory";
-import { setStoreForTests } from "@/lib/db";
+import { getStore, setStoreForTests } from "@/lib/db";
+import { createSessionForUser } from "@/lib/auth/session";
 import { setDecisionEngineOverride } from "@/lib/engine";
 import { setGenerationProviderOverride } from "@/lib/generator";
 import { setChatProviderOverride, type ChatProvider, type ChatRequest, type ChatResponse } from "@/lib/llm/provider";
@@ -9,6 +10,26 @@ export function useMemoryStore(): MemoryStore {
   const store = new MemoryStore(`test-${Math.random().toString(36).slice(2)}`);
   setStoreForTests(store);
   return store;
+}
+
+/**
+ * 测试专用登录捷径。生产登录必须走邮箱验证码；这里只用来快速构造已登录用户，
+ * 避免每个业务测试都重复跑一遍验证码流程。
+ */
+export async function loginWithInvite(email: string, inviteCode?: string) {
+  const store = getStore();
+  let user = await store.getUserByEmail(email);
+  let created = false;
+  if (!user) {
+    if (!inviteCode) throw new Error("首次使用需要邀请码");
+    const invite = await store.getInviteCode(inviteCode);
+    if (!invite) throw new Error("邀请码无效、已过期或已用完");
+    const consumed = await store.consumeInviteCode(inviteCode);
+    if (!consumed) throw new Error("邀请码无效、已过期或已用完");
+    user = await store.createUser(email);
+    created = true;
+  }
+  return { user, created, cookieValue: createSessionForUser(user) };
 }
 
 export function resetOverrides(): void {

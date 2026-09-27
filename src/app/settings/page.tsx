@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { ByokForm } from "@/components/byok-form";
 import { DeleteAccountForm } from "@/components/delete-account-form";
 import { QuotaCard } from "@/components/quota-card";
+import { RevokeSessionsButton } from "@/components/revoke-sessions-button";
 import { TopBar } from "@/components/top-bar";
 import { getCurrentUser } from "@/lib/auth/session";
 import { formatMicroUsd } from "@/lib/llm/usage";
@@ -138,11 +139,19 @@ export default async function SettingsPage() {
         </section>
 
         <section className="card">
+          <h2>登录安全</h2>
+          <p className="small muted">
+            如果怀疑账号在别的设备登录过，可以立即使所有旧会话失效。当前设备也会退出，需要重新用邮箱验证码登录。
+          </p>
+          <RevokeSessionsButton />
+        </section>
+
+        <section className="card">
           <h2>数据与隐私</h2>
           <ul className="small muted">
             <li>材料只对你可见；跨用户读取会被拒绝。</li>
             <li>删除材料时，其派生的大纲、试卷、作答与判定记录会一并删除。</li>
-            <li>上传内容不会用于训练模型。</li>
+            <li>本站不主动用上传内容训练模型；第三方模型服务商是否留存请求，取决于其条款。</li>
             <li>
               使用条款见 <Link href="/terms">服务条款</Link>，数据处理见{" "}
               <Link href="/privacy">隐私说明</Link>。

@@ -84,8 +84,8 @@ export async function askMaterialQuestion(
   }
 
   if (selection.countsAgainstQuota) {
-    await consumeQuota(user.id, { ask: 1 });
     await assertWithinSpendCap(user.id);
+    await consumeQuota(user.id, { ask: 1 });
   }
 
   // 证据先用安全版本拼提示词（中和分隔符），但校验与展示仍用原文

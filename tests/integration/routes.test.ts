@@ -76,8 +76,17 @@ function cookieFrom(response: Response): string {
 }
 
 async function login(email: string, inviteCode?: string) {
-  const response = await loginRoute(
+  const requested = await loginRoute(
     jsonRequest("/api/auth/login", { method: "POST", body: { email, inviteCode } }),
+  );
+  if (!requested.ok) return { response: requested, cookie: "" };
+  const payload = (await requested.json()) as { devCode?: string };
+  if (!payload.devCode) throw new Error("测试环境未返回开发验证码");
+  const response = await loginRoute(
+    jsonRequest("/api/auth/login", {
+      method: "POST",
+      body: { email, code: payload.devCode },
+    }),
   );
   return { response, cookie: response.ok ? cookieFrom(response) : "" };
 }

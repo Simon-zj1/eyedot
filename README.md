@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.9.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.10.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/standard-Agent%20Skills-5b6ee1" alt="Agent Skills">
   <img src="https://img.shields.io/badge/Next.js-15-000000" alt="Next.js">
@@ -163,6 +163,7 @@ and a pre-launch checklist. One-click button:
 | --- | --- | --- |
 | Node.js | ≥ 20 | cannot run |
 | Database | Postgres in production | falls back to in-memory storage (cleared on restart) |
+| Sign-in email | `AUTH_EMAIL_WEBHOOK_URL` or `RESEND_API_KEY` + `AUTH_EMAIL_FROM` | production refuses to issue login codes |
 | Grading | `TYPESAFE_API_KEY` (Jev) | falls back to the LLM judge, then to a lexical demo engine (clearly labelled) |
 | Question generation | `PLATFORM_LLM_API_KEY` (OpenAI-compatible) | falls back to an offline heuristic generator |
 | Material format | pasted text / Markdown, or PDF / Word (.docx) upload | scanned or image-only PDFs are not OCR'd |

@@ -75,6 +75,9 @@ vercel --prod
 | --- | --- | --- |
 | `DATABASE_URL` | ✅ | 上一步拿到的 Postgres 连接串 |
 | `SESSION_SECRET` | ✅ | 随机 32 字节，例如 `openssl rand -base64 32` |
+| `AUTH_EMAIL_WEBHOOK_URL` | ✅（二选一） | 登录验证码邮件通道；把验证码 POST 到你的邮件服务 |
+| `AUTH_EMAIL_WEBHOOK_TOKEN` | 可选 | 如果邮件中转服务需要 Bearer Token |
+| `RESEND_API_KEY` / `AUTH_EMAIL_FROM` | ✅（二选一） | 直接用 Resend 发验证码 |
 | `INITIAL_INVITE_CODES` | ✅ | 邀请码，逗号分隔（例如 `SIMON-2026`） |
 | `AI_API_KEY` | 可选 | 出题模型的 Key；不填则运行在演示模式 |
 | `AI_PROVIDER` | 可选 | 国内 Key 建议显式指定：`deepseek` / `zhipu` / `qwen` / `moonshot` |
@@ -114,6 +117,7 @@ exam.simon-zj.top  CNAME  cname.vercel-dns.com
 ## 5. 上线检查清单
 
 - [ ] 打开线上地址，用邀请码登录成功
+- [ ] 登录验证码邮件真实收到，且验证码错误/过期时被拒绝
 - [ ] 设置页 → 选服务商 → 粘 Key → **测试连接** 显示"已连通"
 - [ ] 上传一段材料 → 生成大纲 → 生成试卷 → 作答 → 看到逐点判定报告
 - [ ] 断网/未配置 Key 时，界面明确显示"演示模式"而不是报错

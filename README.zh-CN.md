@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.9.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.10.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/standard-Agent%20Skills-5b6ee1" alt="Agent Skills">
   <img src="https://img.shields.io/badge/Next.js-15-000000" alt="Next.js">
@@ -114,7 +114,8 @@ cp .env.example .env        # 可选：不配置任何密钥也能跑（离线�
 npm run dev                 # http://localhost:3000
 ```
 
-首次登录需要一个邀请码。本地可以直接给一个：
+首次注册需要一个邀请码；已有账号和首次注册都必须完成邮箱验证码。
+本地开发默认把验证码输出到控制台；生产环境必须配置邮件通道。
 
 ```bash
 echo 'INITIAL_INVITE_CODES=DEV-INVITE' >> .env
@@ -237,6 +238,8 @@ claude mcp add jev-exam -- npx -y jev-exam@latest mcp
 | --- | --- | --- |
 | `DATABASE_URL` | 生产必需 | Postgres 连接串；未设置时使用内存存储 |
 | `SESSION_SECRET` | 生产必需 | 会话签名 + BYOK 加密密钥（scrypt 派生） |
+| `AUTH_EMAIL_WEBHOOK_URL` / `AUTH_EMAIL_WEBHOOK_TOKEN` | 生产二选一 | 把登录验证码 POST 给你的邮件服务 |
+| `RESEND_API_KEY` / `AUTH_EMAIL_FROM` | 生产二选一 | 使用 Resend 发送登录验证码 |
 | `TYPESAFE_API_KEY` | 生产必需 | Jev 判定 |
 | `TYPESAFE_BASE_URL` / `TYPESAFE_MODEL` | 可选 | 默认 `https://api.typesafe.ai` / `jev-latest` |
 | `AI_API_KEY` | 推荐 | 出题模型的单 key，provider 从 key 形状推断（`sk-ant-` Anthropic / `sk-or-` OpenRouter / `AIza` Google / `gsk_` Groq / `xai-` xAI / `vck_` Vercel Gateway / `sk-` OpenAI） |

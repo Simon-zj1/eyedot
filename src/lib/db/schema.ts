@@ -27,9 +27,39 @@ export const users = pgTable(
     id: text("id").primaryKey(),
     email: text("email").notNull(),
     byokEncrypted: text("byok_encrypted"),
+    /**
+     * 会话版本。发放 Cookie 时把版本写入签名载荷，读取时与用户当前版本比对。
+     * 递增版本即可让该用户的所有旧 Cookie 失效，不需要服务端会话表也能做“退出所有设备”。
+     */
+    sessionVersion: integer("session_version").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex("users_email_unique").on(table.email)],
+);
+
+/**
+ * 邮箱验证码挑战。
+ *
+ * 只存验证码的 HMAC，不存明文；消费后立即置 consumed_at。
+ * 这样即使数据库泄露，攻击者也不能直接拿去登录。
+ */
+export const loginChallenges = pgTable(
+  "login_challenges",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    codeHash: text("code_hash").notNull(),
+    /** 新用户首次登录时暂存的邀请码；已有用户为 null */
+    inviteCode: text("invite_code"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    attempts: integer("attempts").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("login_challenges_email_idx").on(table.email, table.createdAt),
+    index("login_challenges_expires_idx").on(table.expiresAt),
+  ],
 );
 
 export const inviteCodes = pgTable("invite_codes", {
