@@ -24,13 +24,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         {/* Next 只输出新标准名 mobile-web-app-capable；旧版 iOS 认的是 apple- 前缀 */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        {/* 在首屏绘制前应用主题，避免深色模式闪白 */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html:
-              "try{if(localStorage.getItem('jev-exam-theme')==='dark'){document.documentElement.dataset.theme='dark'}}catch(e){}",
-          }}
-        />
+        {/* 在首屏绘制前应用主题，避免深色模式闪白；放在 public 下避免内联脚本 */}
+        <script src="/theme-init.js" />
       </head>
       <body>
         {children}
