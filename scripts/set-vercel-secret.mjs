@@ -17,7 +17,7 @@ import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { resolve } from "node:path";
 
-function fromEnvFile(): string | null {
+function fromEnvFile() {
   try {
     const content = readFileSync(resolve(process.cwd(), ".env.local"), "utf8");
     for (const line of content.split(/\r?\n/)) {
@@ -30,7 +30,7 @@ function fromEnvFile(): string | null {
   return null;
 }
 
-function fromKeyFile(): string | null {
+function fromKeyFile() {
   try {
     return readFileSync(resolve(homedir(), ".config/jev-exam/typesafe-api-key"), "utf8").trim();
   } catch {
