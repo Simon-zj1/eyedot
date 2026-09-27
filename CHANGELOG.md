@@ -24,7 +24,7 @@
 
 ### 测试
 
-- 新增账号清理、attempt 幂等、复习待复核、BYOK 成本隔离、失败 usage、point_id 重复、customCss 注入、限流 IP 解析等用例，共 164 个用例。
+- 新增账号清理、attempt 幂等、复习待复核、BYOK 成本隔离、失败 usage、point_id 重复、customCss 注入、限流 IP 解析等用例，共 165 个用例。
 
 ## v0.10.1 · 2026-09-27
 

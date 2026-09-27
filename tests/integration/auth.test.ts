@@ -5,6 +5,7 @@ import {
   sessionFromCookieValue,
   userFromSession,
 } from "@/lib/auth/session";
+import { emailDeliveryMode } from "@/lib/auth/mailer";
 import { resetOverrides, useMemoryStore } from "../helpers";
 
 afterEach(() => resetOverrides());
@@ -58,5 +59,33 @@ describe("邮箱验证码登录", () => {
 
     await store.deleteUserData(user.id);
     expect(await store.getLatestLoginChallenge("cleanup@example.com")).toBeNull();
+  });
+
+  it("生产环境即使设置 AUTH_DEV_MODE 也不会下发控制台验证码", () => {
+    const original = {
+      nodeEnv: process.env.NODE_ENV,
+      devMode: process.env.AUTH_DEV_MODE,
+      webhook: process.env.AUTH_EMAIL_WEBHOOK_URL,
+      resend: process.env.RESEND_API_KEY,
+      from: process.env.AUTH_EMAIL_FROM,
+    };
+    process.env.NODE_ENV = "production";
+    process.env.AUTH_DEV_MODE = "1";
+    delete process.env.AUTH_EMAIL_WEBHOOK_URL;
+    delete process.env.RESEND_API_KEY;
+    delete process.env.AUTH_EMAIL_FROM;
+    try {
+      expect(emailDeliveryMode()).toBe("none");
+    } finally {
+      process.env.NODE_ENV = original.nodeEnv;
+      if (original.devMode === undefined) delete process.env.AUTH_DEV_MODE;
+      else process.env.AUTH_DEV_MODE = original.devMode;
+      if (original.webhook === undefined) delete process.env.AUTH_EMAIL_WEBHOOK_URL;
+      else process.env.AUTH_EMAIL_WEBHOOK_URL = original.webhook;
+      if (original.resend === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = original.resend;
+      if (original.from === undefined) delete process.env.AUTH_EMAIL_FROM;
+      else process.env.AUTH_EMAIL_FROM = original.from;
+    }
   });
 });
