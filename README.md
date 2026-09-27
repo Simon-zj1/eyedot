@@ -14,11 +14,12 @@
   <a href="https://www.simon-zj.top/demo/jev-exam-report.html">Demo report</a> ·
   <a href="SKILL.md">Agent Skill</a> ·
   <a href="SECURITY.md">Security</a> ·
+  <a href="docs/pricing.md">Pricing</a> ·
   <a href="CHANGELOG.md">Changelog</a>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.9.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.9.2-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/standard-Agent%20Skills-5b6ee1" alt="Agent Skills">
   <img src="https://img.shields.io/badge/Next.js-15-000000" alt="Next.js">
