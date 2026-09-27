@@ -5,7 +5,7 @@ import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { gradeQuestion, type AnswerPayload } from "@/lib/grading";
 import { topicKeyOf } from "@/lib/ids";
 import { usageCollector } from "@/lib/llm/usage";
-import { assertQuota, recordUsage } from "@/lib/quota";
+import { consumeQuota, refundQuota } from "@/lib/quota";
 import { readByok } from "@/lib/services/byok";
 import { getExamForUser } from "@/lib/services/generation";
 import { toGeneratedQuestion } from "@/lib/services/questions";
@@ -80,8 +80,10 @@ export async function judgeOneAnswerForUser(
   const engine = selection.engine;
 
   const needsEngine = question.type === "short_answer" || question.type === "cloze";
+  let judgmentQuotaReserved = false;
   if (selection.countsAgainstQuota && needsEngine) {
-    await assertQuota(user.id, { judgment: 1 });
+    await consumeQuota(user.id, { judgment: 1 });
+    judgmentQuotaReserved = true;
     await assertWithinSpendCap(user.id);
   }
 
@@ -129,8 +131,8 @@ export async function judgeOneAnswerForUser(
     response: judgment.raw ?? null,
   });
 
-  if (selection.countsAgainstQuota && judgment.usedEngine) {
-    await recordUsage(user.id, { judgment: 1 });
+  if (selection.countsAgainstQuota && !judgment.usedEngine && judgmentQuotaReserved) {
+    await refundQuota(user.id, { judgment: 1 });
   }
 
   return {

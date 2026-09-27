@@ -164,7 +164,7 @@ and a pre-launch checklist. One-click button:
 | Database | Postgres in production | falls back to in-memory storage (cleared on restart) |
 | Grading | `TYPESAFE_API_KEY` (Jev) | falls back to the LLM judge, then to a lexical demo engine (clearly labelled) |
 | Question generation | `PLATFORM_LLM_API_KEY` (OpenAI-compatible) | falls back to an offline heuristic generator |
-| Material format | plain text / Markdown | extract PDFs and EPUBs to text first |
+| Material format | pasted text / Markdown, or PDF / Word (.docx) upload | scanned or image-only PDFs are not OCR'd |
 
 ## Verification
 
@@ -198,8 +198,10 @@ may not be found, and the app then says so instead of guessing.
 
 Costs shown in settings are estimates derived from public price lists, useful for spotting trends and
 setting caps, not a provider invoice. The platform spend cap (default $0.50 per user per day, platform keys
-only) blocks the *next* model call once today's estimate is used up, so it can overshoot by one request —
-precise enforcement would need reservation and rollback. BYOK is never capped by the platform.
+only) blocks the *next* model call once today's estimate is used up, so it can overshoot by one request.
+Daily count quotas (material / question / judgment / ask) are reserved atomically in a database transaction,
+and excess question-generation quota is refunded if the generator returns fewer questions than requested.
+BYOK is never capped by the platform.
 
 There is no native app yet: the delivery surfaces are web, PWA, CLI, Agent Skill and MCP. The PWA caches
 **static assets only** — pages are server-rendered per logged-in user, and caching them in Cache Storage

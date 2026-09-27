@@ -1,5 +1,25 @@
 # 更新日志
 
+## v0.9.2 · 2026-09-27
+
+### 修复（P0/P1 工程债）
+
+- **数据层没有外键、关键写入没有事务**：所有 `*_id` 加上 `ON DELETE CASCADE` 外键；
+  `createExam`、`deleteMaterial`、`deleteUserData` 改成单事务提交，避免半套试卷或半删账号。
+- **额度 check-then-act 有并发竞态**：新增 `consumeQuota` / `refundQuota`，在 Postgres 里用
+  「条件更新 + 事务」原子占用；出题若最终落库题数少于预留数会退还差额。
+
+### 文档与运营
+
+- 新增 `docs/operating.md`：选定 Neon Free Tier 起步，写清备份、监控、Preview、密钥轮换与升级触发。
+- 修正架构文档过时表述（PDF 已支持、测试数从 60+ 到 152、扫描件不做 OCR）。
+- 隐私页把「不训练」改成如实边界；服务条款补可操作的侵权通知邮箱。
+- 删除游离文件 `src/components/byok-form 2.tsx`，新增 `npm run healthcheck`。
+
+### 测试
+
+- 新增额度原子占用/退还用例，共 152 个用例。
+
 ## v0.9.1 · 2026-09-27
 
 ### 修复（两个 P0）

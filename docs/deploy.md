@@ -20,7 +20,7 @@ vercel --prod --yes                                  # 部署
 vercel env pull /tmp/jev-prod.env --environment=production --yes
 set -a; source /tmp/jev-prod.env; set +a
 export DATABASE_URL="${DATABASE_URL_UNPOOLED:-$DATABASE_URL}"
-npx drizzle-kit push --force                          # 建表 / 同步 schema
+npm run db:migrate                                   # 按 migrations 建表 / 升级 schema
 ```
 
 > 注意：`*.vercel.app` 在国内部分网络会被 TLS 重置（实测直连 000、走代理 200，而 `vercel.com`
@@ -83,8 +83,12 @@ vercel --prod
 部署完成后先把表结构推上去（只做一次）：
 
 ```bash
-DATABASE_URL="postgresql://..." npm run db:push
+DATABASE_URL="postgresql://..." npm run db:migrate
 ```
+
+> 生产只允许 `db:migrate`，不要用 `db:push --force`；后者没有迁移历史，长期会跟测试/回滚脱节。
+> 数据库当前选定 **Neon Free Tier**，升级触发条件与备份/监控见
+> [docs/operating.md](operating.md)。
 
 ## 3. 绑定自己的域名（可选，5 分钟）
 

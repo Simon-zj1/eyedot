@@ -228,7 +228,7 @@ claude mcp add jev-exam -- npx -y jev-exam@latest mcp
 | 判定引擎 | `TYPESAFE_API_KEY`（Jev） | 回落到 LLM 判定；都没有则用离线词面引擎并明确标注 |
 | 出题模型 | `PLATFORM_LLM_API_KEY`（OpenAI 兼容 `/chat/completions`） | 回落到离线启发式出题器 |
 | Agent 环境 | 能读文件、能跑本地命令、识别 `SKILL.md` | 只能用 Web 版；纯聊天环境无法完成校验与渲染 |
-| 材料格式 | 纯文本 / Markdown（Web 版为粘贴） | PDF/EPUB 请先自行抽取为文本 |
+| 材料格式 | 粘贴文本 / Markdown，或上传 PDF / Word（.docx）自动解析 | 扫描件与图片型 PDF 不做 OCR |
 
 ## 环境变量
 
@@ -303,7 +303,8 @@ npm run db:push       # 直接推送到目标库
 ```
 
 Postgres 路径在测试里用 PGlite（进程内 Postgres）真实执行迁移与查询，
-所以 schema 与 SQL 不是「只过了类型检查」。
+所以 schema 与 SQL 不是「只过了类型检查」。所有 `*_id` 外键都带 `ON DELETE CASCADE`，
+删除材料/账号时派生数据不会留下孤儿行；出题、删材料、删账号等关键多步写入在同一事务里提交。
 
 ## 测试与评测
 

@@ -44,7 +44,7 @@ export const materials = pgTable(
   "materials",
   {
     id: text("id").primaryKey(),
-    userId: text("user_id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     rawText: text("raw_text").notNull(),
     tokenCount: integer("token_count").notNull().default(0),
@@ -63,7 +63,7 @@ export const examBlueprints = pgTable(
   "exam_blueprints",
   {
     id: text("id").primaryKey(),
-    materialId: text("material_id").notNull(),
+    materialId: text("material_id").notNull().references(() => materials.id, { onDelete: "cascade" }),
     version: integer("version").notNull().default(1),
     topics: jsonb("topics").$type<Topic[]>().notNull(),
     generatorModel: text("generator_model").notNull(),
@@ -76,8 +76,8 @@ export const questions = pgTable(
   "questions",
   {
     id: text("id").primaryKey(),
-    materialId: text("material_id").notNull(),
-    blueprintId: text("blueprint_id").notNull(),
+    materialId: text("material_id").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    blueprintId: text("blueprint_id").notNull().references(() => examBlueprints.id, { onDelete: "cascade" }),
     topicId: text("topic_id").notNull(),
     topicTitle: text("topic_title").notNull(),
     type: text("type").notNull(),
@@ -100,9 +100,9 @@ export const exams = pgTable(
   "exams",
   {
     id: text("id").primaryKey(),
-    userId: text("user_id").notNull(),
-    materialId: text("material_id").notNull(),
-    blueprintId: text("blueprint_id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    materialId: text("material_id").notNull().references(() => materials.id, { onDelete: "cascade" }),
+    blueprintId: text("blueprint_id").notNull().references(() => examBlueprints.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     kind: text("kind").notNull(),
     config: jsonb("config").$type<ExamConfigRecord>().notNull(),
@@ -115,8 +115,8 @@ export const exams = pgTable(
 export const examQuestions = pgTable(
   "exam_questions",
   {
-    examId: text("exam_id").notNull(),
-    questionId: text("question_id").notNull(),
+    examId: text("exam_id").notNull().references(() => exams.id, { onDelete: "cascade" }),
+    questionId: text("question_id").notNull().references(() => questions.id, { onDelete: "cascade" }),
     position: integer("position").notNull(),
   },
   (table) => [primaryKey({ columns: [table.examId, table.questionId] })],
@@ -126,8 +126,8 @@ export const attempts = pgTable(
   "attempts",
   {
     id: text("id").primaryKey(),
-    examId: text("exam_id").notNull(),
-    userId: text("user_id").notNull(),
+    examId: text("exam_id").notNull().references(() => exams.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     status: text("status").notNull(),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
@@ -141,8 +141,8 @@ export const answers = pgTable(
   "answers",
   {
     id: text("id").primaryKey(),
-    attemptId: text("attempt_id").notNull(),
-    questionId: text("question_id").notNull(),
+    attemptId: text("attempt_id").notNull().references(() => attempts.id, { onDelete: "cascade" }),
+    questionId: text("question_id").notNull().references(() => questions.id, { onDelete: "cascade" }),
     payload: jsonb("payload").$type<AnswerPayload | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -154,10 +154,10 @@ export const judgments = pgTable(
   "judgments",
   {
     id: text("id").primaryKey(),
-    answerId: text("answer_id").notNull(),
-    attemptId: text("attempt_id").notNull(),
-    questionId: text("question_id").notNull(),
-    userId: text("user_id").notNull(),
+    answerId: text("answer_id").notNull().references(() => answers.id, { onDelete: "cascade" }),
+    attemptId: text("attempt_id").notNull().references(() => attempts.id, { onDelete: "cascade" }),
+    questionId: text("question_id").notNull().references(() => questions.id, { onDelete: "cascade" }),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     method: text("method").notNull(),
     score: doublePrecision("score").notNull(),
     scorePercent: integer("score_percent").notNull(),
@@ -184,7 +184,7 @@ export const judgments = pgTable(
 export const mastery = pgTable(
   "mastery",
   {
-    userId: text("user_id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     topicKey: text("topic_key").notNull(),
     topicTitle: text("topic_title").notNull(),
     value: doublePrecision("value").notNull(),
@@ -198,9 +198,9 @@ export const mistakeItems = pgTable(
   "mistake_items",
   {
     id: text("id").primaryKey(),
-    userId: text("user_id").notNull(),
-    questionId: text("question_id").notNull(),
-    materialId: text("material_id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    questionId: text("question_id").notNull().references(() => questions.id, { onDelete: "cascade" }),
+    materialId: text("material_id").notNull().references(() => materials.id, { onDelete: "cascade" }),
     topicKey: text("topic_key").notNull(),
     topicTitle: text("topic_title").notNull(),
     lastScorePercent: integer("last_score_percent").notNull(),
@@ -214,7 +214,7 @@ export const mistakeItems = pgTable(
 export const usageCounters = pgTable(
   "usage_counters",
   {
-    userId: text("user_id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     day: text("day").notNull(),
     kind: text("kind").notNull(),
     amount: integer("amount").notNull().default(0),
@@ -229,7 +229,7 @@ export const usageCounters = pgTable(
 export const llmUsage = pgTable(
   "llm_usage",
   {
-    userId: text("user_id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     day: text("day").notNull(),
     model: text("model").notNull(),
     calls: integer("calls").notNull().default(0),
@@ -250,7 +250,7 @@ export const feedbackReports = pgTable(
   "feedback_reports",
   {
     id: text("id").primaryKey(),
-    userId: text("user_id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     questionId: text("question_id").notNull(),
     attemptId: text("attempt_id"),
     kind: text("kind").notNull(),
@@ -270,9 +270,9 @@ export const reviewItems = pgTable(
   "review_items",
   {
     id: text("id").primaryKey(),
-    userId: text("user_id").notNull(),
-    questionId: text("question_id").notNull(),
-    materialId: text("material_id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    questionId: text("question_id").notNull().references(() => questions.id, { onDelete: "cascade" }),
+    materialId: text("material_id").notNull().references(() => materials.id, { onDelete: "cascade" }),
     topicKey: text("topic_key").notNull(),
     topicTitle: text("topic_title").notNull(),
     stability: doublePrecision("stability").notNull(),
@@ -298,8 +298,8 @@ export const reviewLogs = pgTable(
   "review_logs",
   {
     id: text("id").primaryKey(),
-    userId: text("user_id").notNull(),
-    questionId: text("question_id").notNull(),
+    userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    questionId: text("question_id").notNull().references(() => questions.id, { onDelete: "cascade" }),
     rating: integer("rating").notNull(),
     scorePercent: integer("score_percent").notNull(),
     stabilityBefore: doublePrecision("stability_before").notNull(),

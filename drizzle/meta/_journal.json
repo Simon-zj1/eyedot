@@ -29,6 +29,13 @@
       "when": 1790397688390,
       "tag": "0003_bouncy_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790482825173,
+      "tag": "0004_lethal_archangel",
+      "breakpoints": true
     }
   ]
 }

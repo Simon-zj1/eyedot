@@ -329,6 +329,17 @@ export interface Store {
 
   incrementUsage(userId: string, day: string, kind: QuotaKind, amount: number): Promise<number>;
   getUsage(userId: string, day: string): Promise<UsageSnapshot>;
+  /**
+   * 原子扣减每日次数额度：检查与自增在同一个数据库事务里完成。
+   * 超限时不产生任何计数，返回具体是哪一类超限。
+   */
+  consumeUsage(
+    userId: string,
+    day: string,
+    costs: Partial<Record<QuotaKind, number>>,
+  ): Promise<{ allowed: boolean; exceeded?: QuotaKind; usage: UsageSnapshot }>;
+  /** 回滚一笔已经占用的额度（例如生成了 10 题但最终只落库 7 题）。 */
+  refundUsage(userId: string, day: string, costs: Partial<Record<QuotaKind, number>>): Promise<void>;
 
   incrementLlmUsage(
     userId: string,

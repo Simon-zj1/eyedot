@@ -4,7 +4,7 @@ import { getStore } from "@/lib/db";
 import type { MaterialRecord, UserRecord } from "@/lib/db/types";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import type { SourceMap } from "@/lib/ingest/types";
-import { assertQuota, recordUsage } from "@/lib/quota";
+import { consumeQuota, refundQuota } from "@/lib/quota";
 import { estimateTokens } from "@/lib/text";
 
 export type CreateMaterialInput = {
@@ -30,19 +30,20 @@ export async function createMaterialForUser(
     throw new ValidationError(`材料过长，单次最多 ${MAX_MATERIAL_CHARS} 个字符`);
   }
 
-  await assertQuota(user.id, { material: 1 });
-
-  const material = await getStore().createMaterial({
-    userId: user.id,
-    title,
-    rawText,
-    tokenCount: estimateTokens(rawText),
-    contentHash: createHash("sha256").update(rawText).digest("hex").slice(0, 32),
-    sourceMap,
-  });
-
-  await recordUsage(user.id, { material: 1 });
-  return material;
+  await consumeQuota(user.id, { material: 1 });
+  try {
+    return await getStore().createMaterial({
+      userId: user.id,
+      title,
+      rawText,
+      tokenCount: estimateTokens(rawText),
+      contentHash: createHash("sha256").update(rawText).digest("hex").slice(0, 32),
+      sourceMap,
+    });
+  } catch (error) {
+    await refundQuota(user.id, { material: 1 });
+    throw error;
+  }
 }
 
 function shiftSourceMap(sourceMap: SourceMap | null, removedLeading: number): SourceMap | null {

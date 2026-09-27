@@ -46,7 +46,7 @@ export default async function PrivacyPage() {
         <section className="card">
           <h2>不做什么</h2>
           <ul className="small muted">
-            <li>不用你的材料训练模型。</li>
+            <li>本站不主动用你的材料训练模型；但模型服务商是否留存请求，取决于你选择的服务商条款。</li>
             <li>不把材料公开、不做分享链接、不做用户之间的可见性。</li>
             <li>不把你的数据卖给第三方。</li>
           </ul>

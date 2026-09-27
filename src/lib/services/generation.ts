@@ -9,7 +9,7 @@ import { getStore } from "@/lib/db";
 import type { BlueprintRecord, ExamRecord, MaterialRecord, UserRecord } from "@/lib/db/types";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { resolveGenerationProvider } from "@/lib/generator";
-import { assertQuota, recordUsage } from "@/lib/quota";
+import { consumeQuota, refundQuota } from "@/lib/quota";
 import { usageCollector } from "@/lib/llm/usage";
 import { readByok } from "@/lib/services/byok";
 import { getMaterialForUser } from "@/lib/services/materials";
@@ -98,7 +98,7 @@ export async function createExamForMaterial(
     onChatUsage: usage.onChatUsage,
   });
   if (countsAgainstQuota) {
-    await assertQuota(user.id, { question: count });
+    await consumeQuota(user.id, { question: count });
     await assertWithinSpendCap(user.id);
   }
 
@@ -110,6 +110,9 @@ export async function createExamForMaterial(
       mix,
       count,
     });
+  } catch (error) {
+    if (countsAgainstQuota) await refundQuota(user.id, { question: count });
+    throw error;
   } finally {
     await recordChatUsage(user.id, usage.pending);
   }
@@ -150,7 +153,9 @@ export async function createExamForMaterial(
     records.map((record, index) => ({ questionId: record.id, position: index })),
   );
 
-  if (countsAgainstQuota) await recordUsage(user.id, { question: records.length });
+  if (countsAgainstQuota && records.length < count) {
+    await refundQuota(user.id, { question: count - records.length });
+  }
 
   return {
     exam,

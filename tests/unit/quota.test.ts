@@ -2,7 +2,14 @@ import { afterEach, describe, expect, it } from "vitest";
 import { QUOTA_LIMITS } from "@/lib/config";
 import { QuotaExceededError } from "@/lib/errors";
 import { dayKey } from "@/lib/ids";
-import { assertQuota, checkQuota, recordUsage, usageSnapshot } from "@/lib/quota";
+import {
+  assertQuota,
+  checkQuota,
+  consumeQuota,
+  recordUsage,
+  refundQuota,
+  usageSnapshot,
+} from "@/lib/quota";
 import { resetOverrides, useMemoryStore } from "../helpers";
 
 afterEach(() => resetOverrides());
@@ -43,5 +50,20 @@ describe("每日额度", () => {
     const today = dayKey();
     expect(today).not.toBe("2026-09-22");
     expect((await usageSnapshot(userId)).question).toBe(5);
+  });
+
+  it("consumeQuota 一次占用、可退还多占部分", async () => {
+    useMemoryStore();
+    const userId = "usr_atomic";
+
+    await expect(consumeQuota(userId, { question: 4 })).resolves.toBeDefined();
+    expect((await usageSnapshot(userId)).question).toBe(4);
+
+    await refundQuota(userId, { question: 1 });
+    expect((await usageSnapshot(userId)).question).toBe(3);
+
+    await expect(consumeQuota(userId, { question: QUOTA_LIMITS.question })).rejects.toBeInstanceOf(
+      QuotaExceededError,
+    );
   });
 });

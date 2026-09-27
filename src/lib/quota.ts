@@ -57,6 +57,32 @@ export async function recordUsage(
   }
 }
 
+/**
+ * 原子占用额度：检查与计数在数据库事务里一次完成。
+ * 与「先 checkQuota、后 recordUsage」的区别是并发请求不会同时穿过闸门。
+ */
+export async function consumeQuota(
+  userId: string,
+  cost: Partial<Record<QuotaKind, number>>,
+): Promise<UsageSnapshot> {
+  const store = getStore();
+  const result = await store.consumeUsage(userId, dayKey(), cost);
+  if (!result.allowed && result.exceeded) {
+    throw new QuotaExceededError(
+      `今日${KIND_LABEL[result.exceeded]}额度已用完（上限 ${QUOTA_LIMITS[result.exceeded]}），明天再来或配置自己的密钥。`,
+    );
+  }
+  return result.usage;
+}
+
+/** 退还多占的额度。只允许减少，绝不会把计数扣成负数。 */
+export async function refundQuota(
+  userId: string,
+  cost: Partial<Record<QuotaKind, number>>,
+): Promise<void> {
+  await getStore().refundUsage(userId, dayKey(), cost);
+}
+
 export async function usageSnapshot(userId: string): Promise<UsageSnapshot> {
   return getStore().getUsage(userId, dayKey());
 }

@@ -32,11 +32,12 @@ export default async function TermsPage() {
               不会生成对外链接，也不做用户之间的可见性。
             </li>
             <li>
-              如果你是权利人，认为本站某处内容侵犯了你的权利，请通过{" "}
+              侵权通知：如果你是权利人，认为本站某处内容侵犯了你的权利，请把权利证明、具体定位和你的
+              联系方式发到 <a href="mailto:simon_zj1@163.com">simon_zj1@163.com</a>（也可以走{" "}
               <a href="https://github.com/Simon-zj1/jev-exam/issues" rel="noopener">
                 GitHub Issues
-              </a>{" "}
-              联系我们并提供权利证明与定位信息，我们会核实并删除相关内容。
+              </a>
+              ）。收到有效通知后，我们会在合理期限内核实并删除或禁止访问相关材料。
             </li>
           </ul>
         </section>

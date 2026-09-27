@@ -183,25 +183,27 @@ export class PostgresStore implements Store {
     const material = await this.getMaterial(id);
     if (!material || material.userId !== userId) return false;
 
-    const examIds = this.db
-      .select({ id: schema.exams.id })
-      .from(schema.exams)
-      .where(eq(schema.exams.materialId, id));
-    const attemptIds = this.db
-      .select({ id: schema.attempts.id })
-      .from(schema.attempts)
-      .where(inArray(schema.attempts.examId, examIds));
+    return this.db.transaction(async (tx) => {
+      const examIds = tx
+        .select({ id: schema.exams.id })
+        .from(schema.exams)
+        .where(eq(schema.exams.materialId, id));
+      const attemptIds = tx
+        .select({ id: schema.attempts.id })
+        .from(schema.attempts)
+        .where(inArray(schema.attempts.examId, examIds));
 
-    await this.db.delete(schema.judgments).where(inArray(schema.judgments.attemptId, attemptIds));
-    await this.db.delete(schema.answers).where(inArray(schema.answers.attemptId, attemptIds));
-    await this.db.delete(schema.attempts).where(inArray(schema.attempts.examId, examIds));
-    await this.db.delete(schema.examQuestions).where(inArray(schema.examQuestions.examId, examIds));
-    await this.db.delete(schema.exams).where(eq(schema.exams.materialId, id));
-    await this.db.delete(schema.questions).where(eq(schema.questions.materialId, id));
-    await this.db.delete(schema.examBlueprints).where(eq(schema.examBlueprints.materialId, id));
-    await this.db.delete(schema.mistakeItems).where(eq(schema.mistakeItems.materialId, id));
-    await this.db.delete(schema.materials).where(eq(schema.materials.id, id));
-    return true;
+      await tx.delete(schema.judgments).where(inArray(schema.judgments.attemptId, attemptIds));
+      await tx.delete(schema.answers).where(inArray(schema.answers.attemptId, attemptIds));
+      await tx.delete(schema.attempts).where(inArray(schema.attempts.examId, examIds));
+      await tx.delete(schema.examQuestions).where(inArray(schema.examQuestions.examId, examIds));
+      await tx.delete(schema.exams).where(eq(schema.exams.materialId, id));
+      await tx.delete(schema.questions).where(eq(schema.questions.materialId, id));
+      await tx.delete(schema.examBlueprints).where(eq(schema.examBlueprints.materialId, id));
+      await tx.delete(schema.mistakeItems).where(eq(schema.mistakeItems.materialId, id));
+      await tx.delete(schema.materials).where(eq(schema.materials.id, id));
+      return true;
+    });
   }
 
   async saveBlueprint(input: NewBlueprint): Promise<BlueprintRecord> {
@@ -288,16 +290,18 @@ export class PostgresStore implements Store {
     questions: { questionId: string; position: number }[],
   ): Promise<ExamRecord> {
     const examId = createId("exam");
-    const rows = await this.db
-      .insert(schema.exams)
-      .values({ ...input, id: examId })
-      .returning();
-    if (questions.length > 0) {
-      await this.db
-        .insert(schema.examQuestions)
-        .values(questions.map((entry) => ({ ...entry, examId })));
-    }
-    return rows[0] as ExamRecord;
+    return this.db.transaction(async (tx) => {
+      const rows = await tx
+        .insert(schema.exams)
+        .values({ ...input, id: examId })
+        .returning();
+      if (questions.length > 0) {
+        await tx
+          .insert(schema.examQuestions)
+          .values(questions.map((entry) => ({ ...entry, examId })));
+      }
+      return rows[0] as ExamRecord;
+    });
   }
 
   async getExam(id: string): Promise<ExamRecord | null> {
@@ -579,7 +583,15 @@ export class PostgresStore implements Store {
   }
 
   async getUsage(userId: string, day: string): Promise<UsageSnapshot> {
-    const rows = await this.db
+    return this.getUsageFrom(this.db, userId, day);
+  }
+
+  private async getUsageFrom(
+    db: AnyPgDatabase,
+    userId: string,
+    day: string,
+  ): Promise<UsageSnapshot> {
+    const rows = await db
       .select()
       .from(schema.usageCounters)
       .where(and(eq(schema.usageCounters.userId, userId), eq(schema.usageCounters.day, day)));
@@ -593,6 +605,69 @@ export class PostgresStore implements Store {
       }
     }
     return snapshot;
+  }
+
+  async consumeUsage(
+    userId: string,
+    day: string,
+    costs: Partial<Record<QuotaKind, number>>,
+  ): Promise<{ allowed: boolean; exceeded?: QuotaKind; usage: UsageSnapshot }> {
+    return this.db.transaction(async (tx) => {
+      const transactionalDb = tx as AnyPgDatabase;
+      for (const [kind, amount] of Object.entries(costs) as [QuotaKind, number][]) {
+        if (!amount || amount <= 0) continue;
+        // 先保证该用户/天/类别有一行，再在同一事务里用条件更新原子判断是否超限。
+        await tx
+          .insert(schema.usageCounters)
+          .values({ userId, day, kind, amount: 0 })
+          .onConflictDoNothing();
+        const rows = await tx
+          .update(schema.usageCounters)
+          .set({ amount: sql`${schema.usageCounters.amount} + ${amount}` })
+          .where(
+            and(
+              eq(schema.usageCounters.userId, userId),
+              eq(schema.usageCounters.day, day),
+              eq(schema.usageCounters.kind, kind),
+              lte(sql`${schema.usageCounters.amount} + ${amount}`, QUOTA_LIMITS[kind]),
+            ),
+          )
+          .returning({ amount: schema.usageCounters.amount });
+        if (rows.length === 0) {
+          return {
+            allowed: false,
+            exceeded: kind,
+            usage: await this.getUsageFrom(transactionalDb, userId, day),
+          };
+        }
+      }
+      return {
+        allowed: true,
+        usage: await this.getUsageFrom(transactionalDb, userId, day),
+      };
+    });
+  }
+
+  async refundUsage(
+    userId: string,
+    day: string,
+    costs: Partial<Record<QuotaKind, number>>,
+  ): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      for (const [kind, amount] of Object.entries(costs) as [QuotaKind, number][]) {
+        if (!amount || amount <= 0) continue;
+        await tx
+          .update(schema.usageCounters)
+          .set({ amount: sql`greatest(0, ${schema.usageCounters.amount} - ${amount})` })
+          .where(
+            and(
+              eq(schema.usageCounters.userId, userId),
+              eq(schema.usageCounters.day, day),
+              eq(schema.usageCounters.kind, kind),
+            ),
+          );
+      }
+    });
   }
 
   async incrementLlmUsage(
@@ -683,50 +758,52 @@ export class PostgresStore implements Store {
   }
 
   async deleteUserData(userId: string): Promise<void> {
-    await this.db.delete(schema.feedbackReports).where(eq(schema.feedbackReports.userId, userId));
-    await this.db.delete(schema.llmUsage).where(eq(schema.llmUsage.userId, userId));
-    await this.db.delete(schema.reviewLogs).where(eq(schema.reviewLogs.userId, userId));
-    await this.db.delete(schema.reviewItems).where(eq(schema.reviewItems.userId, userId));
-    await this.db.delete(schema.usageCounters).where(eq(schema.usageCounters.userId, userId));
-    await this.db.delete(schema.mistakeItems).where(eq(schema.mistakeItems.userId, userId));
-    await this.db.delete(schema.mastery).where(eq(schema.mastery.userId, userId));
+    await this.db.transaction(async (tx) => {
+      await tx.delete(schema.feedbackReports).where(eq(schema.feedbackReports.userId, userId));
+      await tx.delete(schema.llmUsage).where(eq(schema.llmUsage.userId, userId));
+      await tx.delete(schema.reviewLogs).where(eq(schema.reviewLogs.userId, userId));
+      await tx.delete(schema.reviewItems).where(eq(schema.reviewItems.userId, userId));
+      await tx.delete(schema.usageCounters).where(eq(schema.usageCounters.userId, userId));
+      await tx.delete(schema.mistakeItems).where(eq(schema.mistakeItems.userId, userId));
+      await tx.delete(schema.mastery).where(eq(schema.mastery.userId, userId));
 
-    // 作答与判定挂在 attempt 上，按该用户的 attempt 清理
-    const attempts = await this.db
-      .select({ id: schema.attempts.id })
-      .from(schema.attempts)
-      .where(eq(schema.attempts.userId, userId));
-    const attemptIds = attempts.map((row) => row.id);
-    if (attemptIds.length > 0) {
-      await this.db.delete(schema.judgments).where(inArray(schema.judgments.attemptId, attemptIds));
-      await this.db.delete(schema.answers).where(inArray(schema.answers.attemptId, attemptIds));
-      await this.db.delete(schema.attempts).where(inArray(schema.attempts.id, attemptIds));
-    }
+      // 作答与判定挂在 attempt 上，按该用户的 attempt 清理
+      const attempts = await tx
+        .select({ id: schema.attempts.id })
+        .from(schema.attempts)
+        .where(eq(schema.attempts.userId, userId));
+      const attemptIds = attempts.map((row) => row.id);
+      if (attemptIds.length > 0) {
+        await tx.delete(schema.judgments).where(inArray(schema.judgments.attemptId, attemptIds));
+        await tx.delete(schema.answers).where(inArray(schema.answers.attemptId, attemptIds));
+        await tx.delete(schema.attempts).where(inArray(schema.attempts.id, attemptIds));
+      }
 
-    const exams = await this.db
-      .select({ id: schema.exams.id })
-      .from(schema.exams)
-      .where(eq(schema.exams.userId, userId));
-    const examIds = exams.map((row) => row.id);
-    if (examIds.length > 0) {
-      await this.db.delete(schema.examQuestions).where(inArray(schema.examQuestions.examId, examIds));
-      await this.db.delete(schema.exams).where(inArray(schema.exams.id, examIds));
-    }
+      const exams = await tx
+        .select({ id: schema.exams.id })
+        .from(schema.exams)
+        .where(eq(schema.exams.userId, userId));
+      const examIds = exams.map((row) => row.id);
+      if (examIds.length > 0) {
+        await tx.delete(schema.examQuestions).where(inArray(schema.examQuestions.examId, examIds));
+        await tx.delete(schema.exams).where(inArray(schema.exams.id, examIds));
+      }
 
-    const materials = await this.db
-      .select({ id: schema.materials.id })
-      .from(schema.materials)
-      .where(eq(schema.materials.userId, userId));
-    const materialIds = materials.map((row) => row.id);
-    if (materialIds.length > 0) {
-      await this.db.delete(schema.questions).where(inArray(schema.questions.materialId, materialIds));
-      await this.db
-        .delete(schema.examBlueprints)
-        .where(inArray(schema.examBlueprints.materialId, materialIds));
-      await this.db.delete(schema.materials).where(inArray(schema.materials.id, materialIds));
-    }
+      const materials = await tx
+        .select({ id: schema.materials.id })
+        .from(schema.materials)
+        .where(eq(schema.materials.userId, userId));
+      const materialIds = materials.map((row) => row.id);
+      if (materialIds.length > 0) {
+        await tx.delete(schema.questions).where(inArray(schema.questions.materialId, materialIds));
+        await tx
+          .delete(schema.examBlueprints)
+          .where(inArray(schema.examBlueprints.materialId, materialIds));
+        await tx.delete(schema.materials).where(inArray(schema.materials.id, materialIds));
+      }
 
-    await this.db.delete(schema.users).where(eq(schema.users.id, userId));
+      await tx.delete(schema.users).where(eq(schema.users.id, userId));
+    });
   }
 
   async upsertReviewItem(input: NewReviewItem): Promise<ReviewItemRecord> {

@@ -13,7 +13,7 @@ import { gradeQuestion, type AnswerPayload } from "@/lib/grading";
 import { topicKeyOf } from "@/lib/ids";
 import { interleaveByTopic } from "@/lib/interleave";
 import { usageCollector } from "@/lib/llm/usage";
-import { assertQuota, recordUsage } from "@/lib/quota";
+import { consumeQuota, refundQuota } from "@/lib/quota";
 import { readByok } from "@/lib/services/byok";
 import { toGeneratedQuestion, toStudentQuestion } from "@/lib/services/questions";
 import { assertWithinSpendCap, recordChatUsage } from "@/lib/services/usage";
@@ -227,8 +227,10 @@ export async function gradeReviewAnswer(
   const usage = usageCollector();
   const selection = resolveDecisionEngine({ byok, onChatUsage: usage.onChatUsage });
   const needsEngine = question.type === "short_answer" || question.type === "cloze";
+  let judgmentQuotaReserved = false;
   if (selection.countsAgainstQuota && needsEngine) {
-    await assertQuota(user.id, { judgment: 1 });
+    await consumeQuota(user.id, { judgment: 1 });
+    judgmentQuotaReserved = true;
     await assertWithinSpendCap(user.id);
   }
 
@@ -245,8 +247,8 @@ export async function gradeReviewAnswer(
   } finally {
     await recordChatUsage(user.id, usage.pending);
   }
-  if (selection.countsAgainstQuota && judgment.usedEngine) {
-    await recordUsage(user.id, { judgment: 1 });
+  if (selection.countsAgainstQuota && !judgment.usedEngine && judgmentQuotaReserved) {
+    await refundQuota(user.id, { judgment: 1 });
   }
 
   const rating = options.ratingOverride ?? ratingFromScore(judgment.scorePercent);

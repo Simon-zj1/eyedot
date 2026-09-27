@@ -11,7 +11,7 @@ import {
   buildAskUserPrompt,
 } from "@/lib/qa/prompt";
 import type { QaAnswer, QaIssue } from "@/lib/qa/types";
-import { assertQuota, recordUsage } from "@/lib/quota";
+import { consumeQuota, refundQuota } from "@/lib/quota";
 import { retrieveEvidence, type RetrievalResult } from "@/lib/retrieval";
 import { scanMaterial } from "@/lib/security/untrusted";
 import { readByok } from "@/lib/services/byok";
@@ -84,7 +84,7 @@ export async function askMaterialQuestion(
   }
 
   if (selection.countsAgainstQuota) {
-    await assertQuota(user.id, { ask: 1 });
+    await consumeQuota(user.id, { ask: 1 });
     await assertWithinSpendCap(user.id);
   }
 
@@ -94,14 +94,18 @@ export async function askMaterialQuestion(
     text: scanMaterial(unit.text, { maxChars: 2000 }).promptText,
   }));
 
-  const response = await selection.provider.complete({
-    system: ASK_SYSTEM_PROMPT,
-    user: buildAskUserPrompt({ question, evidence: safeEvidence }),
-    temperature: 0.2,
-    maxTokens: 1200,
-  });
-
-  if (selection.countsAgainstQuota) await recordUsage(user.id, { ask: 1 });
+  let response;
+  try {
+    response = await selection.provider.complete({
+      system: ASK_SYSTEM_PROMPT,
+      user: buildAskUserPrompt({ question, evidence: safeEvidence }),
+      temperature: 0.2,
+      maxTokens: 1200,
+    });
+  } catch (error) {
+    if (selection.countsAgainstQuota) await refundQuota(user.id, { ask: 1 });
+    throw error;
+  }
 
   await recordChatUsage(user.id, [
     {

@@ -475,6 +475,38 @@ export class MemoryStore implements Store {
     return snapshot;
   }
 
+  async consumeUsage(
+    userId: string,
+    day: string,
+    costs: Partial<Record<QuotaKind, number>>,
+  ): Promise<{ allowed: boolean; exceeded?: QuotaKind; usage: UsageSnapshot }> {
+    const current = await this.getUsage(userId, day);
+    for (const [kind, amount] of Object.entries(costs) as [QuotaKind, number][]) {
+      if (!amount || amount <= 0) continue;
+      if (current[kind] + amount > QUOTA_LIMITS[kind]) {
+        return { allowed: false, exceeded: kind, usage: current };
+      }
+    }
+    for (const [kind, amount] of Object.entries(costs) as [QuotaKind, number][]) {
+      if (!amount || amount <= 0) continue;
+      await this.incrementUsage(userId, day, kind, amount);
+    }
+    return { allowed: true, usage: await this.getUsage(userId, day) };
+  }
+
+  async refundUsage(
+    userId: string,
+    day: string,
+    costs: Partial<Record<QuotaKind, number>>,
+  ): Promise<void> {
+    for (const [kind, amount] of Object.entries(costs) as [QuotaKind, number][]) {
+      if (!amount || amount <= 0) continue;
+      const key = `${userId}::${day}::${kind}`;
+      const current = this.state.usage.get(key) ?? 0;
+      this.state.usage.set(key, Math.max(0, current - amount));
+    }
+  }
+
   async incrementLlmUsage(
     userId: string,
     day: string,
