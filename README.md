@@ -168,6 +168,10 @@ and a pre-launch checklist. One-click button:
 | Question generation | `PLATFORM_LLM_API_KEY` (OpenAI-compatible) | falls back to an offline heuristic generator |
 | Material format | pasted text / Markdown, or PDF / Word (.docx) upload | scanned or image-only PDFs are not OCR'd |
 
+Never paste secrets into chat. Put `TYPESAFE_API_KEY` into the gitignored `.env.local` (or
+`~/.config/jev-exam/typesafe-api-key`) and run `npm run set:jev-key`; the script writes it to Vercel via
+stdin without printing it.
+
 ## Verification
 
 ```bash

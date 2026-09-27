@@ -249,6 +249,10 @@ claude mcp add jev-exam -- npx -y jev-exam@latest mcp
 | `PLATFORM_LLM_BASE_URL` / `PLATFORM_LLM_MODEL` | 可选 | 默认 `https://api.openai.com/v1` / `gpt-5-mini` |
 | `INITIAL_INVITE_CODES` | 可选 | 逗号分隔，首次启动写入邀请码（每个默认 3 次） |
 
+密钥不要发在聊天里。把它写进被 `.gitignore` 忽略的 `.env.local`，或放到
+`~/.config/jev-exam/typesafe-api-key`，然后运行 `npm run set:jev-key`，脚本会通过 stdin 把它写入
+Vercel，不会打印密钥原文。
+
 ## 判定逻辑
 
 ### 客观题（确定性判分）
