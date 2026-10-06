@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
     const csv = await buildAnkiCsv(user);
     return downloadResponse({
       content: csv,
-      asciiName: `jev-exam-anki-${stamp()}.csv`,
-      fileName: `jev-exam-Anki卡片-${stamp()}.csv`,
+      asciiName: `eyedot-anki-${stamp()}.csv`,
+      fileName: `点睛-Anki卡片-${stamp()}.csv`,
       contentType: "text/csv",
     });
   } catch (error) {

@@ -48,7 +48,8 @@
 
 ## 相关文档
 
-- [naming.md](naming.md)：为什么产品名不该叫「Jev 备考」，五个候选与推荐。
+- [naming.md](naming.md)：为什么产品名不该叫「Jev 备考」，五个候选与推荐。最终采用
+  **点睛（Eyedot）**。
 - [candidates/](candidates/)：五个图标候选的 SVG（点睛 / 点石 / 点通 / 拾遗 / 点阵）。
 - [icon-candidates.html](icon-candidates.html)：候选对照页（大尺寸 + 40px 小尺寸 + 含义说明），
   截图见 [icon-candidates.png](icon-candidates.png)。

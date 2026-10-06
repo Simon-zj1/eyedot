@@ -16,7 +16,7 @@ import { todayLlmUsage } from "@/lib/services/usage";
  */
 
 export type BackupBundle = {
-  format: "jev-exam-backup";
+    format: "eyedot-backup";
   version: 1;
   exportedAt: string;
   user: { email: string; createdAt: string };
@@ -64,7 +64,7 @@ export async function buildBackup(user: UserRecord): Promise<BackupBundle> {
   );
 
   return {
-    format: "jev-exam-backup",
+    format: "eyedot-backup",
     version: 1,
     exportedAt: new Date().toISOString(),
     user: { email: user.email, createdAt: user.createdAt.toISOString() },
@@ -161,7 +161,7 @@ export async function buildAnkiCsv(user: UserRecord): Promise<string> {
                 : `答案：${question.answerKey.cloze?.answer ?? ""}`);
 
       const tags = [
-        "jev-exam",
+        "eyedot",
         material.title.replace(/[\s,]/g, "_"),
         question.topicTitle.replace(/[\s,]/g, "_"),
       ];
@@ -181,7 +181,7 @@ export async function buildMarkdownExport(user: UserRecord): Promise<string> {
   const reviews = await store.listReviewItems(user.id);
 
   const lines: string[] = [
-    `# Jev 备考 · 数据导出`,
+    `# 点睛 · 数据导出`,
     "",
     `- 账号：${user.email}`,
     `- 导出时间：${new Date().toLocaleString("zh-CN")}`,

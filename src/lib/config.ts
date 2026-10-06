@@ -2,8 +2,8 @@
  * 全局可调参数。判定阈值集中在这里，方便 eval 回归时统一调参。
  */
 
-export const APP_NAME = "Jev 备考";
-export const APP_TAGLINE = "上传你的材料，自动出一套题，用决策模型逐点判分";
+export const APP_NAME = "点睛";
+export const APP_TAGLINE = "上传材料，逐点判定，看见你漏掉的那一点";
 
 /** choice / score 答案自带的 confidence 低于该值时进入待复核。 */
 export const CONFIDENCE_THRESHOLD = 0.75;

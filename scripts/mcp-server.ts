@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Jev 备考 · MCP server（stdio，JSON-RPC 2.0）。
+ * 点睛 · MCP server（stdio，JSON-RPC 2.0）。
  *
  * 让 Claude Code / Codex / Cursor 这类支持 MCP 的 Agent 直接调用能力，
  * 而不需要自己拼 shell 命令：

@@ -10,7 +10,7 @@ export function TopBar({ user }: { user: UserRecord | null }) {
       <div className="topbar__inner">
         <Link href="/" className="brand">
           <BrandMark size={22} />
-          Jev<span>备考</span>
+          点<span>睛</span>
         </Link>
         <nav className="nav">
           <Link href="/materials">材料</Link>

@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
     const markdown = await buildMarkdownExport(user);
     return downloadResponse({
       content: markdown,
-      asciiName: `jev-exam-${stamp()}.md`,
-      fileName: `jev-exam-学习资料-${stamp()}.md`,
+      asciiName: `eyedot-${stamp()}.md`,
+      fileName: `点睛-学习资料-${stamp()}.md`,
       contentType: "text/markdown",
     });
   } catch (error) {

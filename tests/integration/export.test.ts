@@ -75,7 +75,7 @@ describe("数据导出", () => {
 
     const backup = await buildBackup(user);
 
-    expect(backup.format).toBe("jev-exam-backup");
+    expect(backup.format).toBe("eyedot-backup");
     expect(backup.user.email).toBe("exporter@example.com");
     expect(backup.materials).toHaveLength(1);
     expect(backup.questions.length).toBeGreaterThan(0);
@@ -102,7 +102,7 @@ describe("数据导出", () => {
     expect(record.startsWith('"')).toBe(true);
     // 三个字段 → 每行恰好 5 个引号字符边界（起始、字段间两个、结尾）
     expect(record.split(",").length).toBeGreaterThanOrEqual(3);
-    expect(csv).toContain("jev-exam");
+    expect(csv).toContain("eyedot");
     expect(csv).toContain("出处：");
   });
 
@@ -110,7 +110,7 @@ describe("数据导出", () => {
     await seedAttempt();
     const markdown = await buildMarkdownExport(user);
 
-    expect(markdown).toContain("# Jev 备考 · 数据导出");
+    expect(markdown).toContain("# 点睛 · 数据导出");
     expect(markdown).toContain("## 导出材料");
     expect(markdown).toContain("### 材料原文");
     expect(markdown).toContain("### 题目与评分点");

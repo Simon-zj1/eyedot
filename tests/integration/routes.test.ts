@@ -705,7 +705,7 @@ describe("HTTP 层（路由处理器）", () => {
 
     const anki = await exportAnkiRoute(jsonRequest("/api/export/anki", { cookie }));
     expect(anki.status).toBe(200);
-    expect(await anki.text()).toContain("jev-exam");
+    expect(await anki.text()).toContain("eyedot");
 
     const backup = await exportBackupRoute(jsonRequest("/api/export/backup", { cookie }));
     expect(backup.status).toBe(200);
@@ -714,7 +714,7 @@ describe("HTTP 层（路由处理器）", () => {
       materials: unknown[];
       attempts: unknown[];
     };
-    expect(bundle.format).toBe("jev-exam-backup");
+    expect(bundle.format).toBe("eyedot-backup");
     expect(bundle.materials).toHaveLength(1);
     expect(bundle.attempts).toHaveLength(1);
 

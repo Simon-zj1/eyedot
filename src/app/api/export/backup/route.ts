@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
     const bundle = await buildBackup(user);
     return downloadResponse({
       content: JSON.stringify(bundle, null, 2),
-      asciiName: `jev-exam-backup-${stamp()}.json`,
-      fileName: `jev-exam-备份-${stamp()}.json`,
+      asciiName: `eyedot-backup-${stamp()}.json`,
+      fileName: `点睛-备份-${stamp()}.json`,
       contentType: "application/json",
     });
   } catch (error) {

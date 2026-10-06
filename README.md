@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/banner.svg" alt="Jev Exam Prep" width="100%">
+  <img src="docs/banner.svg" alt="Eyedot" width="100%">
 </p>
 
-<h1 align="center">Jev Exam Prep</h1>
+<h1 align="center">Eyedot · 点睛</h1>
 
 <p align="center">
   <strong>Turn your own study material into an exam that grades itself point by point — and tells you which idea you failed to express.</strong>
@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.11.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.12.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/standard-Agent%20Skills-5b6ee1" alt="Agent Skills">
   <img src="https://img.shields.io/badge/Next.js-15-000000" alt="Next.js">

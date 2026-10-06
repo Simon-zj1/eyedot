@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Jev 备考命令行工具（Agent Skill 的执行入口）。
+ * 点睛命令行工具（Agent Skill 的执行入口）。
  *
  * 设计分工和 SKILL.md 一致：
  * - 内容（出题、参考答案、得分点）由 Agent / LLM 产出，写进 exam.json；
@@ -460,7 +460,7 @@ async function commandDemo(flags: Parsed): Promise<void> {
 }
 
 function printHelp(): void {
-  line(`Jev 备考 · 命令行工具
+  line(`点睛 · 命令行工具
 
   answer-template --exam exam.json --out answers.json
   verify          --material material.md --exam exam.json [--out verify.json] [--strict]

@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="docs/banner.svg" alt="Jev 备考：把学习材料变成可自动判分的考试" width="100%">
+  <img src="docs/banner.svg" alt="点睛：把学习材料变成可自动判分的考试" width="100%">
 </p>
 
-<h1 align="center">Jev 备考 · Jev Exam Prep</h1>
+<h1 align="center">点睛 · Eyedot</h1>
 
 <p align="center">
   <strong>上传你自己的学习材料，自动出题，用决策模型逐个得分点判定，并告诉你"哪一句没说到"。</strong>
@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.11.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.12.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/standard-Agent%20Skills-5b6ee1" alt="Agent Skills">
   <img src="https://img.shields.io/badge/Next.js-15-000000" alt="Next.js">
