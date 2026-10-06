@@ -8,6 +8,11 @@
 - 同步更新应用标题、PWA manifest、顶栏、图标 aria-label、导出文件名、README、
   CLI/MCP 文案、示例报告与个人网站项目页。
 - `Jev` 仅保留在真正指 TypeSafe 判定引擎的配置项、引擎实现与架构说明中。
+- 按新名字重做图标主稿：三种判定结果里的「命中」改成琥珀金 `#FFD166`
+  （与吉祥物点点头顶悬着的那一点同色），形状说状态、颜色说「那一点亮没亮」。
+- 新增 `scripts/render-brand-icons.mjs`（`npm run brand:icons`）导出全部 PNG。
+  旧文档写的「用 sips 从 SVG 重新生成」是错的——sips 读不了 SVG，照着做会静默留下旧图标。
+  顺手修掉 `.next/types` 里带 ` 2`/` 3` 后缀的重复类型文件导致的 typecheck 假报错。
 
 ### 同步
 
