@@ -93,6 +93,9 @@ export const ASK_MAX_CITATIONS = 6;
 export const ASK_MIN_EVIDENCE = 1;
 export const ASK_MAX_QUESTION_CHARS = 400;
 
+/** 登录验证码邮件 webhook 的超时时间；避免第三方邮件服务卡住登录请求。 */
+export const AUTH_EMAIL_TIMEOUT_MS = 10_000;
+
 /**
  * 每人每天的模型消费上限（平台 Key，微美元）。
 *

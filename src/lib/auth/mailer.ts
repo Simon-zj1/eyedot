@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { AUTH_EMAIL_TIMEOUT_MS } from "@/lib/config";
 import { AppError } from "@/lib/errors";
 
 export type LoginCodeDelivery = {
@@ -36,6 +37,7 @@ async function postJson(url: string, body: unknown, headers: Record<string, stri
     method: "POST",
     headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(AUTH_EMAIL_TIMEOUT_MS),
   });
   if (!response.ok) {
     const detail = (await response.text()).slice(0, 200);

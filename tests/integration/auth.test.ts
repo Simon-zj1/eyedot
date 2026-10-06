@@ -69,7 +69,7 @@ describe("邮箱验证码登录", () => {
       resend: process.env.RESEND_API_KEY,
       from: process.env.AUTH_EMAIL_FROM,
     };
-    process.env.NODE_ENV = "production";
+    (process.env as Record<string, string | undefined>).NODE_ENV = "production";
     process.env.AUTH_DEV_MODE = "1";
     delete process.env.AUTH_EMAIL_WEBHOOK_URL;
     delete process.env.RESEND_API_KEY;
@@ -77,7 +77,7 @@ describe("邮箱验证码登录", () => {
     try {
       expect(emailDeliveryMode()).toBe("none");
     } finally {
-      process.env.NODE_ENV = original.nodeEnv;
+      (process.env as Record<string, string | undefined>).NODE_ENV = original.nodeEnv;
       if (original.devMode === undefined) delete process.env.AUTH_DEV_MODE;
       else process.env.AUTH_DEV_MODE = original.devMode;
       if (original.webhook === undefined) delete process.env.AUTH_EMAIL_WEBHOOK_URL;
