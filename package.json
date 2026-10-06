@@ -68,6 +68,7 @@
     "study": "tsx scripts/study.ts",
     "mcp": "tsx scripts/mcp-server.ts",
     "demo:report": "tsx scripts/study.ts demo --out docs/demo",
+    "brand:icons": "node scripts/render-brand-icons.mjs",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",

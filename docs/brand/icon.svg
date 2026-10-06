@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="点睛图标：材料要点与三种判定状态">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="点睛图标：材料要点与三种判定结果，命中的那一点被点亮">
   <defs>
     <linearGradient id="ground" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#4B5BFF"/>
@@ -22,11 +22,14 @@
     <rect x="232" y="624" width="196" height="64" rx="32" opacity="0.82"/>
   </g>
 
-  <!-- 右侧三种判定状态：命中（实心）· 未命中（空心）· 待复核（半实心） -->
+  <!-- 三种判定状态：命中（被点亮）· 未命中（空心）· 待复核（半实心）
+       形状说状态，颜色说「那一点有没有亮」：命中的那一点是琥珀金，
+       和吉祥物点点头顶悬着的那一点同色，也是「点睛」这个名字唯一需要的一点。
+       不加发光渐变或第二道环：小到 32px 时它们只会糊成一团。 -->
   <g>
-    <circle cx="800" cy="368" r="64" fill="#FFFFFF"/>
-    <circle cx="800" cy="512" r="64" fill="none" stroke="#FFFFFF" stroke-width="20"/>
-    <circle cx="800" cy="656" r="64" fill="none" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="18"/>
-    <path d="M800 592 A64 64 0 0 1 800 720 Z" fill="#FFFFFF"/>
+    <circle cx="800" cy="368" r="72" fill="#FFD166"/>
+    <circle cx="800" cy="520" r="64" fill="none" stroke="#FFFFFF" stroke-width="20"/>
+    <circle cx="800" cy="672" r="64" fill="none" stroke="#FFFFFF" stroke-opacity="0.45" stroke-width="18"/>
+    <path d="M800 608 A64 64 0 0 1 800 736 Z" fill="#FFFFFF"/>
   </g>
 </svg>
