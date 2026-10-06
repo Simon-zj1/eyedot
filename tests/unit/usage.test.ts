@@ -23,7 +23,7 @@ describe("模型成本估算", () => {
   });
 
   it("带日期后缀的模型名按前缀匹配价格", () => {
-    expect(priceFor("deepseek-chat-2026-01-01")).toEqual(priceFor("deepseek-chat"));
+    expect(priceFor("deepseek-flash-2026-10-01")).toEqual(priceFor("deepseek-flash"));
   });
 
   it("未知模型用偏高的默认价，宁可高估成本", () => {

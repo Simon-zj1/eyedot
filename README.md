@@ -135,7 +135,7 @@ Providers reachable from mainland China come first in the settings UI.
 
 | Provider | Base URL (auto-filled) | Default model |
 | --- | --- | --- |
-| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat` |
+| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-flash` |
 | 智谱 GLM | `https://open.bigmodel.cn/api/paas/v4` | `glm-4.6` |
 | 通义千问 (Aliyun Bailian) | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-plus` |
 | Kimi (Moonshot) | `https://api.moonshot.cn/v1` | `kimi-k2-turbo-preview` |

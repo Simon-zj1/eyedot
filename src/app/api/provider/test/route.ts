@@ -75,7 +75,7 @@ function explain(message: string): string {
     return "API Key 无效或已过期：请回到服务商控制台重新复制一次完整 Key。";
   }
   if (text.includes("404") || text.includes("model not found") || text.includes("does not exist")) {
-    return "模型名不对：请按服务商文档填写可用模型名（例如 deepseek-chat、glm-4.6、qwen-plus）。";
+    return "模型名不对：请按服务商文档填写可用模型名（例如 deepseek-flash、glm-4.6、qwen-plus）。";
   }
   if (text.includes("429") || text.includes("rate limit")) {
     return "请求被限流或额度不足：请稍后重试，或检查账户余额。";

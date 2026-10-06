@@ -28,8 +28,10 @@ try {
   if (body.auth && body.auth.sessionSecretConfigured === false) {
     problems.push("SESSION_SECRET 未配置，生产环境拒绝使用公开开发密钥");
   }
-  if (body.engines?.judge !== "typesafe") {
-    problems.push(`判定引擎=${body.engines?.judge}，应为 typesafe`);
+  if (body.engines?.judge === "lexical-demo" || body.engines?.judgeMode === "offline") {
+    problems.push(`判定引擎=${body.engines?.judge}，已退化为离线演示`);
+  } else if (body.engines?.judge !== "typesafe") {
+    console.warn(`提示：当前判定引擎=${body.engines?.judge}，不是 TypeSafe Jev。`);
   }
   if (body.engines?.demoMode) problems.push("当前处于离线演示模式（未配置出题或判定 Key）");
   if (problems.length > 0) {

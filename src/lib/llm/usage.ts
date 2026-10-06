@@ -15,8 +15,9 @@ export type PricePerMillion = { input: number; output: number };
 
 /** 常见模型的公开价（USD / 1M tokens）；未列出的用 defaultPrice。 */
 export const MODEL_PRICES: Record<string, PricePerMillion> = {
-  "deepseek-chat": { input: 0.27, output: 1.1 },
-  "deepseek-reasoner": { input: 0.55, output: 2.19 },
+  // 按 deepseek 官方高峰价保守估算：cache miss 输入 + 输出。
+  "deepseek-flash": { input: 0.3, output: 1.2 },
+  "deepseek-v4-pro": { input: 1.32, output: 3.96 },
   "glm-4.6": { input: 0.6, output: 2.2 },
   "glm-4.5-air": { input: 0.2, output: 1.1 },
   "qwen-plus": { input: 0.4, output: 1.2 },

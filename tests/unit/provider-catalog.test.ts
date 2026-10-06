@@ -95,7 +95,7 @@ describe("环境变量配置", () => {
     const config = resolveGenerationConfig();
     expect(config?.kind).toBe("deepseek");
     expect(config?.baseUrl).toBe("https://api.deepseek.com/v1");
-    expect(config?.model).toBe("deepseek-chat");
+    expect(config?.model).toBe("deepseek-flash");
     expect(config?.ambiguous).toBe(false);
   });
 
