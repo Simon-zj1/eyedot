@@ -164,8 +164,19 @@ npx eyedot render  --report learning_work/report.json --out report.html
 > ```bash
 > npx tsx scripts/study.ts verify --material ... --exam ...   # 已 clone 并 npm install
 > npx github:Simon-zj1/eyedot verify --material ... --exam ...  # 不 clone
-> npm publish   # 想发到 npm 时（需要先 npm login）
 > ```
+
+发布到 npm（维护者用）：
+
+```bash
+# 1. 建 granular token（Packages: Read and write）：https://www.npmjs.com/settings/~/tokens
+# 2. 存到 ~/.config/eyedot/npm-token（chmod 600），然后：
+npm run publish:npm
+```
+
+脚本把 token 写进一份**临时** `.npmrc` 再删除，所以既不会留在 `~/.npmrc`，
+也不会出现在 `ps` 里；`npm publish --dry-run --access public` 可以先看不发布，
+确认打包内容（当前 272 个文件、1.2 MB）。
 
 产物是**离线单文件报告**（无外部请求、无字体/CDN 依赖）：`report.json` + `report.html` + `report.md`。
 

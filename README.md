@@ -153,6 +153,18 @@ Providers reachable from mainland China come first in the settings UI.
 Settings has a **Test connection** button that verifies key + endpoint + model and explains common
 failures (401 / 404 / 429 / network) in plain language.
 
+### Publishing to npm (maintainers)
+
+```bash
+# 1. Create a granular token with Packages: Read and write — https://www.npmjs.com/settings/~/tokens
+# 2. Save it to ~/.config/eyedot/npm-token (chmod 600), then:
+npm run publish:npm
+```
+
+The script writes the token into a **temporary** `.npmrc` and deletes it afterwards, so it never
+lands in `~/.npmrc` and never shows up in `ps`. Use `npm publish --dry-run --access public` first
+to inspect the tarball without publishing (currently 272 files, 1.2 MB).
+
 ### Deploy the web app
 
 `docs/deploy.md` walks through Vercel + a hosted Postgres, environment variables, a custom subdomain,
