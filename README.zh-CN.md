@@ -11,7 +11,7 @@
 <p align="center">
   <a href="README.md">English</a> ·
   <a href="README.zh-CN.md"><strong>中文</strong></a> ·
-  <a href="https://www.simon-zj.top/demo/jev-exam-report.html">示例报告</a> ·
+  <a href="https://www.simon-zj.top/demo/eyedot-report.html">示例报告</a> ·
   <a href="docs/architecture.md">架构与取舍</a> ·
   <a href="SKILL.md">Agent Skill</a> ·
   <a href="SECURITY.md">安全边界</a> ·
@@ -20,16 +20,17 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.12.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.13.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/standard-Agent%20Skills-5b6ee1" alt="Agent Skills">
   <img src="https://img.shields.io/badge/Next.js-15-000000" alt="Next.js">
-  <img src="https://img.shields.io/badge/grading-Jev%20%7C%20Decision%20Model-7f5af0" alt="Jev">
-  <img src="https://github.com/Simon-zj1/jev-exam/actions/workflows/ci.yml/badge.svg" alt="CI">
+  <img src="https://img.shields.io/badge/grading-Decision%20Model-7f5af0" alt="Decision Model">
+  <img src="https://github.com/Simon-zj1/eyedot/actions/workflows/ci.yml/badge.svg" alt="CI">
 </p>
 
-这个项目的核心不是「让模型给个分」，而是把**判定**拆成一批原子的、可核对的问题，用决策模型
-（TypeSafe Jev / System One）逐个判定，再由代码合成分数。分数为什么是这样的，可以在结果页逐条核对。
+这个项目的核心不是「让模型给个分」，而是把**判定**拆成一批原子的、可核对的问题，逐点判定，
+再由代码合成分数。判定引擎是可替换的：默认走通用大模型的判定实现，配置 TypeSafe Jev
+（System One 决策模型）后自动切成决策模型。分数为什么是这样的，可以在结果页逐条核对。
 
 ## 界面
 
@@ -53,11 +54,11 @@
 > 判定用的是词面近似而非 Jev。接入 `TYPESAFE_API_KEY` 后界面一致，判定质量不同。
 >
 > **想直接看产物而不安装任何东西**：打开
-> [在线示例报告](https://www.simon-zj.top/demo/jev-exam-report.html)（单文件、离线可读），
+> [在线示例报告](https://www.simon-zj.top/demo/eyedot-report.html)（单文件、离线可读），
 > 或看仓库里的 [docs/demo/report.html](docs/demo/report.html)。
 >
 > 上图为 960px 版本；完整三档（1440 / 960 / 640 + 手机裁剪）在
-> [在线图文说明](https://www.simon-zj.top/tech/tools/jev-exam/)里，手机端会自动换用可读的裁剪版，
+> [在线图文说明](https://www.simon-zj.top/tech/tools/eyedot/)里，手机端会自动换用可读的裁剪版，
 > 点击图片可放大查看完整截图。
 
 ## 三个可核对的保证
@@ -87,13 +88,15 @@
 
 | 环节 | 由谁负责 | 说明 |
 | --- | --- | --- |
-| 材料理解、出题、评分点拆解 | 生成式 LLM / 你的 Agent | Jev 不生成任何文字，这一步它做不了 |
+| 材料理解、出题、评分点拆解 | 生成式 LLM / 你的 Agent | 判定引擎不生成任何文字，这一步它做不了 |
 | 客观题判分 | 确定性代码 | 归一化后精确比对；只有填空需要「语义等价」时才调用一次 noul |
-| 要点式主观题判分 | Jev（每个得分点一条 noul） | 概率即得分率，代码按权重合成，并施加矛盾/编造扣分 |
+| 要点式主观题判分 | 判定引擎（每个得分点一条 noul） | 概率即得分率，代码按权重合成，并施加矛盾/编造扣分 |
 
-### Jev 在其中的位置
+### 判定引擎在其中的位置
 
-Jev（TypeSafe 的 System One / Decision Model）是**判定引擎**，不是校验框架：
+默认实现是通用大模型判定（`llm-judge`）；配置 `TYPESAFE_API_KEY` 后换成 TypeSafe
+Jev（System One / Decision Model）；`lexical` 是离线演示用的词面基线。三者实现的都是同一个
+`DecisionEngine` 接口，所以判定引擎是**可替换的实现**，不是校验框架：
 
 - 输入是 `state`（材料、题目、学生作答）和一组类型化问题；
 - 输出是类型化概率：`noul`（是/否概率 0–1）、`choice`（选项 + 概率分布 + confidence）、
@@ -138,27 +141,27 @@ Word 取 `.docx` 正文。解析结果先回填表单让你确认，再保存—
 ### 用法二：Agent Skill / 命令行 / MCP（零服务器）
 
 ```bash
-git clone https://github.com/Simon-zj1/jev-exam.git ~/.agents/skills/jev-exam   # Codex / Copilot CLI
-git clone https://github.com/Simon-zj1/jev-exam.git ~/.claude/skills/jev-exam   # Claude Code
-cd ~/.agents/skills/jev-exam && npm install
+git clone https://github.com/Simon-zj1/eyedot.git ~/.agents/skills/eyedot   # Codex / Copilot CLI
+git clone https://github.com/Simon-zj1/eyedot.git ~/.claude/skills/eyedot   # Claude Code
+cd ~/.agents/skills/eyedot && npm install
 ```
 
 装好后在对话里说「用这份材料考我」——Agent 按 [SKILL.md](SKILL.md) 出题，脚本负责校验、判定与渲染：
 
 ```bash
-npx jev-exam verify  --material examples/agent-interview-notes.md --exam exam.json --strict
-npx jev-exam answer-template --exam exam.json --out answers.json
-npx jev-exam grade   --material examples/agent-interview-notes.md --exam exam.json \
+npx eyedot verify  --material examples/agent-interview-notes.md --exam exam.json --strict
+npx eyedot answer-template --exam exam.json --out answers.json
+npx eyedot grade   --material examples/agent-interview-notes.md --exam exam.json \
                      --answers answers.json --out ./learning_work --engine auto
-npx jev-exam render  --report learning_work/report.json --out report.html
+npx eyedot render  --report learning_work/report.json --out report.html
 ```
 
-> 包已按 npm 发布形态配置好（`bin` / `files` / `publishConfig`）。如果 `npx jev-exam` 报 404，
+> 包已按 npm 发布形态配置好（`bin` / `files` / `publishConfig`）。如果 `npx eyedot` 报 404，
 > 说明还没发布；可以先用仓库内的等价命令，或直接从 GitHub 跑：
 >
 > ```bash
 > npx tsx scripts/study.ts verify --material ... --exam ...   # 已 clone 并 npm install
-> npx github:Simon-zj1/jev-exam verify --material ... --exam ...  # 不 clone
+> npx github:Simon-zj1/eyedot verify --material ... --exam ...  # 不 clone
 > npm publish   # 想发到 npm 时（需要先 npm login）
 > ```
 
@@ -167,11 +170,11 @@ npx jev-exam render  --report learning_work/report.json --out report.html
 不想用 shell 的 Agent 可以直接挂 MCP server（四个工具：校验 / 出模板 / 判分 / 渲染）：
 
 ```bash
-claude mcp add jev-exam -- npx -y jev-exam@latest mcp
+claude mcp add eyedot -- npx -y eyedot@latest mcp
 ```
 
 ```json
-{ "mcpServers": { "jev-exam": { "command": "npx", "args": ["-y", "jev-exam@latest", "mcp"] } } }
+{ "mcpServers": { "eyedot": { "command": "npx", "args": ["-y", "eyedot@latest", "mcp"] } } }
 ```
 
 仓库里还带了给编码 Agent 的规则（[AGENTS.md](AGENTS.md)、`.cursor/rules/`）与
@@ -179,7 +182,7 @@ claude mcp add jev-exam -- npx -y jev-exam@latest mcp
 
 ### 一键部署 Web 版
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSimon-zj1%2Fjev-exam&env=AI_API_KEY&envDescription=%E5%87%BA%E9%A2%98%E6%A8%A1%E5%9E%8B%E7%9A%84%20key&project-name=jev-exam&repository-name=jev-exam)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSimon-zj1%2Feyedot&env=AI_API_KEY&envDescription=%E5%87%BA%E9%A2%98%E6%A8%A1%E5%9E%8B%E7%9A%84%20key&project-name=eyedot&repository-name=eyedot)
 
 只问一个变量：`AI_API_KEY`。不配置任何 key 也能部署成功，会运行在离线演示模式（界面会标注）。
 
@@ -221,7 +224,7 @@ claude mcp add jev-exam -- npx -y jev-exam@latest mcp
 
 `docs/deploy.md` 里有完整步骤：Vercel + 托管 Postgres、环境变量、绑定自己的子域名、上线检查清单。一键按钮：
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSimon-zj1%2Fjev-exam&env=AI_API_KEY&project-name=jev-exam&repository-name=jev-exam)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSimon-zj1%2Feyedot&env=AI_API_KEY&project-name=eyedot&repository-name=eyedot)
 
 | 项目 | 要求 | 缺失时的行为 |
 | --- | --- | --- |
@@ -250,7 +253,7 @@ claude mcp add jev-exam -- npx -y jev-exam@latest mcp
 | `INITIAL_INVITE_CODES` | 可选 | 逗号分隔，首次启动写入邀请码（每个默认 3 次） |
 
 密钥不要发在聊天里。把它写进被 `.gitignore` 忽略的 `.env.local`，或放到
-`~/.config/jev-exam/typesafe-api-key`，然后运行 `npm run set:jev-key`，脚本会通过 stdin 把它写入
+`~/.config/eyedot/typesafe-api-key`，然后运行 `npm run set:typesafe-key`，脚本会通过 stdin 把它写入
 Vercel，不会打印密钥原文。
 
 ## 判定逻辑
@@ -420,4 +423,4 @@ examples/              示例材料
 
 ## 许可
 
-[MIT](LICENSE) © 2026 Simon · 更多内容见 [www.simon-zj.top](https://www.simon-zj.top/tech/tools/jev-exam/)
+[MIT](LICENSE) © 2026 Simon · 更多内容见 [www.simon-zj.top](https://www.simon-zj.top/tech/tools/eyedot/)

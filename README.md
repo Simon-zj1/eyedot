@@ -11,7 +11,7 @@
 <p align="center">
   <a href="README.md"><strong>English</strong></a> ·
   <a href="README.zh-CN.md">中文</a> ·
-  <a href="https://www.simon-zj.top/demo/jev-exam-report.html">Demo report</a> ·
+  <a href="https://www.simon-zj.top/demo/eyedot-report.html">Demo report</a> ·
   <a href="SKILL.md">Agent Skill</a> ·
   <a href="SECURITY.md">Security</a> ·
   <a href="docs/pricing.md">Pricing</a> ·
@@ -19,16 +19,18 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.12.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.13.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/standard-Agent%20Skills-5b6ee1" alt="Agent Skills">
   <img src="https://img.shields.io/badge/Next.js-15-000000" alt="Next.js">
-  <img src="https://img.shields.io/badge/grading-Jev%20%7C%20Decision%20Model-7f5af0" alt="Jev">
+  <img src="https://img.shields.io/badge/grading-Decision%20Model-7f5af0" alt="Decision Model">
 </p>
 
 The point of this project is not "let a model give a score". It is to decompose **grading** into a set of
-atomic, checkable questions, decide each of them with a decision model (TypeSafe Jev / System One), and
-combine the probabilities in code. Every point in the final score can be audited in the report.
+atomic, checkable questions, decide each of them, and combine the probabilities in code. The decision
+engine is swappable: a general-LLM judge by default, TypeSafe Jev (System One) when a
+`TYPESAFE_API_KEY` is configured, and a lexical baseline for offline demos. Every point in the final
+score can be audited in the report.
 
 ![Judgment report](docs/screenshots/result-960.jpg)
 
@@ -47,7 +49,7 @@ combine the probabilities in code. Every point in the final score can be audited
 > UI is identical and the grading quality is not.
 >
 > **To see the output without installing anything**, open the
-> [hosted sample report](https://www.simon-zj.top/demo/jev-exam-report.html) (single file, fully offline),
+> [hosted sample report](https://www.simon-zj.top/demo/eyedot-report.html) (single file, fully offline),
 > or the copy in the repository at [docs/demo/report.html](docs/demo/report.html).
 
 ## Three guarantees you can check
@@ -69,13 +71,14 @@ finds nothing relevant the app answers "the material does not say" without calli
 
 | Step | Owner | Note |
 | --- | --- | --- |
-| Reading material, writing questions and rubric points | a generative LLM / your agent | Jev generates no text, so it cannot do this |
+| Reading material, writing questions and rubric points | a generative LLM / your agent | the decision engine generates no text, so it cannot do this |
 | Objective grading | deterministic code | normalised comparison; only cloze triggers one semantic-equivalence question |
-| Written-answer grading | Jev (one `noul` per rubric point) | the probability is the point score; code weights and combines them |
+| Written-answer grading | the decision engine (one `noul` per rubric point) | the probability is the point score; code weights and combines them |
 
-Jev is a **decision model**: text or state in, typed probabilities out (`noul` 0–1, a `choice` distribution,
-a `score` on an ordered rubric). It returns no text, no rationale and does no arithmetic. Since `noul`
-carries no confidence field, this project measures judgment strength as `strength = |p − 0.5| × 2`.
+A decision model such as TypeSafe Jev takes text or state in and gives typed probabilities out (`noul`
+0–1, a `choice` distribution, a `score` on an ordered rubric). It returns no text, no rationale and does
+no arithmetic. Since `noul` carries no confidence field, this project measures judgment strength as
+`strength = |p − 0.5| × 2`.
 
 Swapping engines requires implementing one interface, `DecisionEngine` ([src/lib/types.ts](src/lib/types.ts)).
 
@@ -109,9 +112,9 @@ cards with overdue days and learning state, and the dashboard shows how many car
 ### 2. Agent Skill / CLI (no server)
 
 ```bash
-git clone https://github.com/Simon-zj1/jev-exam.git ~/.agents/skills/jev-exam    # Codex / Copilot CLI
-git clone https://github.com/Simon-zj1/jev-exam.git ~/.claude/skills/jev-exam    # Claude Code
-cd ~/.agents/skills/jev-exam && npm install
+git clone https://github.com/Simon-zj1/eyedot.git ~/.agents/skills/eyedot    # Codex / Copilot CLI
+git clone https://github.com/Simon-zj1/eyedot.git ~/.claude/skills/eyedot    # Claude Code
+cd ~/.agents/skills/eyedot && npm install
 ```
 
 Then say "quiz me on this material": the agent writes `exam.json` following [SKILL.md](SKILL.md), and the
@@ -155,7 +158,7 @@ failures (401 / 404 / 429 / network) in plain language.
 `docs/deploy.md` walks through Vercel + a hosted Postgres, environment variables, a custom subdomain,
 and a pre-launch checklist. One-click button:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSimon-zj1%2Fjev-exam&env=AI_API_KEY&project-name=jev-exam&repository-name=jev-exam)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSimon-zj1%2Feyedot&env=AI_API_KEY&project-name=eyedot&repository-name=eyedot)
 
 ### Compatibility
 
@@ -169,7 +172,7 @@ and a pre-launch checklist. One-click button:
 | Material format | pasted text / Markdown, or PDF / Word (.docx) upload | scanned or image-only PDFs are not OCR'd |
 
 Never paste secrets into chat. Put `TYPESAFE_API_KEY` into the gitignored `.env.local` (or
-`~/.config/jev-exam/typesafe-api-key`) and run `npm run set:jev-key`; the script writes it to Vercel via
+`~/.config/eyedot/typesafe-api-key`) and run `npm run set:typesafe-key`; the script writes it to Vercel via
 stdin without printing it.
 
 ## Verification
@@ -217,4 +220,4 @@ handwriting (PencilKit → recognition → the same grading pipeline) is not imp
 
 ## License
 
-[MIT](LICENSE) © 2026 Simon · More at [www.simon-zj.top](https://www.simon-zj.top/tech/tools/jev-exam/)
+[MIT](LICENSE) © 2026 Simon · More at [www.simon-zj.top](https://www.simon-zj.top/tech/tools/eyedot/)

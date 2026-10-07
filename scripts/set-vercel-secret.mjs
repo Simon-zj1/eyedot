@@ -5,11 +5,11 @@
  * 默认读取顺序：
  * 1. process.env.TYPESAFE_API_KEY
  * 2. .env.local 里的 TYPESAFE_API_KEY
- * 3. ~/.config/jev-exam/typesafe-api-key
+ * 3. ~/.config/eyedot/typesafe-api-key（改名前的 ~/.config/jev-exam/ 仍然认）
  *
  * 用法：
- *   npm run set:jev-key                 # production
- *   npm run set:jev-key -- preview     # preview
+ *   npm run set:typesafe-key                 # production
+ *   npm run set:typesafe-key -- preview     # preview
  */
 
 import { spawn } from "node:child_process";
@@ -31,11 +31,15 @@ function fromEnvFile() {
 }
 
 function fromKeyFile() {
-  try {
-    return readFileSync(resolve(homedir(), ".config/jev-exam/typesafe-api-key"), "utf8").trim();
-  } catch {
-    return null;
+  // 先找新目录，再找改名前的目录：本机密钥没必要因为改名重放一次。
+  for (const dir of [".config/eyedot", ".config/jev-exam"]) {
+    try {
+      return readFileSync(resolve(homedir(), dir, "typesafe-api-key"), "utf8").trim();
+    } catch {
+      // 继续找下一个来源
+    }
   }
+  return null;
 }
 
 const key = process.env.TYPESAFE_API_KEY?.trim() || fromKeyFile() || fromEnvFile();
@@ -45,7 +49,7 @@ if (!key) {
       "没有找到 TYPESAFE_API_KEY。",
       "",
       "请选择一种隐式提供方式：",
-      "1. 写入 ~/.config/jev-exam/typesafe-api-key（推荐）",
+      "1. 写入 ~/.config/eyedot/typesafe-api-key（推荐）",
       "2. 写入 .env.local：TYPESAFE_API_KEY=...",
       "3. 在当前 shell 设置 TYPESAFE_API_KEY 后运行本脚本",
       "",

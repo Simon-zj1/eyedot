@@ -82,5 +82,9 @@
    （见 [README.md](README.md) 与 [mascot.html](mascot.html) 头顶同色的那一点）。
 4. ✅ README / 网站项目页 / 演示报告已同步改名。
 
-**仍未改的两处（保持原样，因为改动会打断已有链接）**：GitHub 仓库名 `jev-exam`、
-网站路径 `/tech/tools/jev-exam/`。产品名与它们不一致是已知的、刻意的取舍。
+5. ✅ GitHub 仓库改名为 [Simon-zj1/eyedot](https://github.com/Simon-zj1/eyedot)，
+   npm 包名 / `bin` / MCP server 名 / CLI 命令一并换成 `eyedot`，网站路径换成
+   `/tech/tools/eyedot/`（旧路径留了跳转页）。至此产品名、仓库名、命令行与 URL 四处一致。
+
+改名没有伤到数据：会话 Cookie、BYOK 密文与本地草稿都保留了旧标识的回退读取，
+细节见 [CHANGELOG](../../CHANGELOG.md) 的 v0.13.0。

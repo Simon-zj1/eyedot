@@ -25,11 +25,39 @@ function secret(): string {
 }
 
 function signingKey(): Buffer {
-  return scryptSync(secret(), "jev-exam/session", 32);
+  return scryptSync(secret(), "eyedot/session", 32);
 }
 
 function encryptionKey(): Buffer {
+  return scryptSync(secret(), "eyedot/byok", 32);
+}
+
+/**
+ * 改名前的域分隔标签。
+ *
+ * 域分隔标签看着像内部实现，其实承载了数据：改名之前签发的会话 cookie、
+ * 改名之前发出去的验证码哈希、以及用户已经存好的 BYOK 密文，全都是用旧标签派生出的
+ * 密钥保护的。只换新标签而不认旧标签，等于改名当天把所有人踢下线、并把别人存好的
+ * API Key 变成解不开的乱码——所以旧标签只读不写：新数据一律用新标签。
+ */
+function legacySigningKey(): Buffer {
+  return scryptSync(secret(), "jev-exam/session", 32);
+}
+
+function legacyEncryptionKey(): Buffer {
   return scryptSync(secret(), "jev-exam/byok", 32);
+}
+
+/** 常数时间的字符串比较；用于验证码哈希这种不能提前返回的场景。 */
+function constantTimeEqual(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+
+function macMatches(key: Buffer, data: string, mac: string): boolean {
+  const expected = createHmac("sha256", key).update(data).digest("base64url");
+  return constantTimeEqual(mac, expected);
 }
 
 export function signSessionToken(payload: Record<string, unknown>, ttlSeconds: number): string {
@@ -43,10 +71,10 @@ export function verifySessionToken<T = Record<string, unknown>>(token: string): 
   const [data, mac] = token.split(".");
   if (!data || !mac) return null;
 
-  const expected = createHmac("sha256", signingKey()).update(data).digest("base64url");
-  const a = Buffer.from(mac);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
+  // 新标签验不过再试旧标签（短路的 || 让常见路径仍然只派生一次密钥）。
+  if (!macMatches(signingKey(), data, mac) && !macMatches(legacySigningKey(), data, mac)) {
+    return null;
+  }
 
   try {
     const parsed = JSON.parse(Buffer.from(data, "base64url").toString("utf8")) as T & {
@@ -72,9 +100,12 @@ export function hashLoginCode(email: string, code: string): string {
 }
 
 export function verifyLoginCodeHash(email: string, code: string, expected: string): boolean {
-  const actual = Buffer.from(hashLoginCode(email, code));
-  const target = Buffer.from(expected);
-  return actual.length === target.length && timingSafeEqual(actual, target);
+  if (constantTimeEqual(hashLoginCode(email, code), expected)) return true;
+  // 改名当天已经发出去的验证码是用旧标签哈希的，别让人输对了却登不进去。
+  const legacy = createHmac("sha256", legacySigningKey())
+    .update(`${email.toLowerCase()}:${code}`)
+    .digest("base64url");
+  return constantTimeEqual(legacy, expected);
 }
 
 /** AES-256-GCM 加密 BYOK 密钥，格式 v1:<iv>:<tag>:<ciphertext>（base64url）。 */
@@ -89,11 +120,19 @@ export function encryptSecret(plaintext: string): string {
 export function decryptSecret(payload: string): string | null {
   const parts = payload.split(":");
   if (parts.length !== 4 || parts[0] !== "v1") return null;
+  const iv = Buffer.from(parts[1], "base64url");
+  const tag = Buffer.from(parts[2], "base64url");
+  const ciphertext = Buffer.from(parts[3], "base64url");
+  // 先试新标签，再试改名前的标签：用户存好的密钥不能因为改名变成乱码。
+  return (
+    decryptWith(encryptionKey(), iv, tag, ciphertext) ??
+    decryptWith(legacyEncryptionKey(), iv, tag, ciphertext)
+  );
+}
+
+function decryptWith(key: Buffer, iv: Buffer, tag: Buffer, ciphertext: Buffer): string | null {
   try {
-    const iv = Buffer.from(parts[1], "base64url");
-    const tag = Buffer.from(parts[2], "base64url");
-    const ciphertext = Buffer.from(parts[3], "base64url");
-    const decipher = createDecipheriv("aes-256-gcm", encryptionKey(), iv);
+    const decipher = createDecipheriv("aes-256-gcm", key, iv);
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
   } catch {

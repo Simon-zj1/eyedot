@@ -70,9 +70,9 @@ function multipartRequest(
 
 function cookieFrom(response: Response): string {
   const raw = response.headers.get("set-cookie") ?? "";
-  const match = raw.match(/jev_session=([^;]+)/);
+  const match = raw.match(/eyedot_session=([^;]+)/);
   if (!match) throw new Error(`响应中没有会话 Cookie：${raw}`);
-  return `jev_session=${match[1]}`;
+  return `eyedot_session=${match[1]}`;
 }
 
 async function login(email: string, inviteCode?: string) {
@@ -148,6 +148,16 @@ describe("HTTP 层（路由处理器）", () => {
       }
     }
     expect(limited).toBeGreaterThan(0);
+  });
+
+  it("改名之前发出的会话 Cookie 仍然有效，改名不会把人踢下线", async () => {
+    const { cookie } = await login("legacy-cookie@example.com", "HTTP-CODE");
+    // 同一个会话令牌换成改名前的 Cookie 名，服务端必须照样认
+    const legacyCookie = cookie.replace(/^eyedot_session=/, "jev_session=");
+    const response = await materialsRoute(
+      jsonRequest("/api/materials", { cookie: legacyCookie }),
+    );
+    expect(response.status).toBe(200);
   });
 
   it("未登录时所有业务接口返回 401", async () => {
@@ -749,7 +759,10 @@ describe("HTTP 层（路由处理器）", () => {
       }),
     );
     expect(deleted.status).toBe(200);
-    expect(deleted.headers.get("set-cookie")).toContain("jev_session=;");
+    // 改名前的旧 Cookie 名也要一起清掉，否则退出后浏览器里还留着一条能被读到的会话
+    const clearedCookies = deleted.headers.get("set-cookie") ?? "";
+    expect(clearedCookies).toContain("eyedot_session=;");
+    expect(clearedCookies).toContain("jev_session=;");
 
     const afterDelete = await materialsRoute(jsonRequest("/api/materials", { cookie }));
     expect(afterDelete.status).toBe(401);

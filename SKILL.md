@@ -1,5 +1,5 @@
 ---
-name: jev-exam
+name: eyedot
 description: 把一份学习材料（面试八股、法条、术语表、讲义、论文笔记等）变成一套可自动判分的试卷，并用决策模型逐个得分点给出概率判定与可核对的报告。当用户说"用这份材料考我""根据材料出题并判分""做成可测验的学习资料""帮我准备面试八股的自测"时使用。产出为 exam.json（可人工修改）、answers.json 与离线的 report.html / report.md。
 ---
 
@@ -20,13 +20,13 @@ description: 把一份学习材料（面试八股、法条、术语表、讲义�
 ## 安装
 
 ```bash
-git clone https://github.com/Simon-zj1/jev-exam.git ~/.agents/skills/jev-exam   # Codex / Copilot CLI
-git clone https://github.com/Simon-zj1/jev-exam.git ~/.claude/skills/jev-exam   # Claude Code
-cd ~/.agents/skills/jev-exam && npm install
+git clone https://github.com/Simon-zj1/eyedot.git ~/.agents/skills/eyedot   # Codex / Copilot CLI
+git clone https://github.com/Simon-zj1/eyedot.git ~/.claude/skills/eyedot   # Claude Code
+cd ~/.agents/skills/eyedot && npm install
 ```
 
 技能目录已经 `npm install` 之后，本文件里的命令用 `npx tsx scripts/study.ts <子命令>` 即可；
-如果该包已经发布到 npm，也可以直接用 `npx jev-exam <子命令>`（两者等价）。
+如果该包已经发布到 npm，也可以直接用 `npx eyedot <子命令>`（两者等价）。
 
 判定引擎（二选一，都不配也能跑但会退化为演示模式）：
 

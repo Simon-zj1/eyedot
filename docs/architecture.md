@@ -131,8 +131,8 @@ scripts/mcp-server.ts MCP server：verify_exam / answer_template / grade_answers
 | --- | --- | --- |
 | Web 应用 | `npm run dev` | 多用户、额度、错题本、掌握度 |
 | Agent Skill | 装进 `~/.agents/skills/` 后说"用这份材料考我" | Codex / Claude Code 里的日常自测 |
-| CLI | `npx jev-exam grade ...` | 脚本化、批处理、CI |
-| MCP server | `npx jev-exam mcp` | 让 Agent 直接调用而不是拼 shell |
+| CLI | `npx eyedot grade ...` | 脚本化、批处理、CI |
+| MCP server | `npx eyedot mcp` | 让 Agent 直接调用而不是拼 shell |
 
 ## 已知限制
 

@@ -39,7 +39,9 @@ export function ExamRunner({
   questions: RunnerQuestion[];
 }) {
   const router = useRouter();
-  const storageKey = `jev-exam-draft-${examId}`;
+  const storageKey = `eyedot-draft-${examId}`;
+  // 改名前的草稿存在旧键里，先读一次再写新键，避免正在作答的人丢草稿。
+  const legacyStorageKey = `jev-exam-draft-${examId}`;
   const initial = useMemo<DraftState>(() => {
     const draft: DraftState = {};
     for (const question of questions) {
@@ -57,7 +59,8 @@ export function ExamRunner({
 
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem(storageKey);
+      const stored =
+        window.localStorage.getItem(storageKey) ?? window.localStorage.getItem(legacyStorageKey);
       if (stored) {
         const parsed = JSON.parse(stored) as DraftState;
         setAnswers((current) => ({ ...parsed, ...current }));
@@ -65,7 +68,7 @@ export function ExamRunner({
     } catch {
       // 忽略损坏的本地草稿
     }
-  }, [storageKey]);
+  }, [storageKey, legacyStorageKey]);
 
   const update = useCallback(
     (questionId: string, payload: AnswerPayload) => {

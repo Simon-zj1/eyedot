@@ -12,7 +12,23 @@ import { bootstrapStore, getStore } from "@/lib/db";
 import type { UserRecord } from "@/lib/db/types";
 import { AppError, UnauthorizedError, ValidationError } from "@/lib/errors";
 
-export const SESSION_COOKIE = "jev_session";
+export const SESSION_COOKIE = "eyedot_session";
+/**
+ * 改名前的会话 Cookie 名。
+ *
+ * 只换新名字会让改名当天所有在线的人凭空登出；旧名字只读不写，新会话一律写新名字，
+ * 旧 Cookie 下次登录时自然被替换掉。清理时两个名字都要清，否则退出登录后会留下
+ * 一条仍然能被读到的旧 Cookie。
+ */
+export const LEGACY_SESSION_COOKIE = "jev_session";
+export const SESSION_COOKIE_NAMES = [SESSION_COOKIE, LEGACY_SESSION_COOKIE] as const;
+
+/** 先读新 Cookie，读不到再读改名前的旧 Cookie。 */
+export function readSessionCookie(cookies: {
+  get(name: string): { value: string } | undefined;
+}): string | undefined {
+  return cookies.get(SESSION_COOKIE)?.value ?? cookies.get(LEGACY_SESSION_COOKIE)?.value;
+}
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
 const LOGIN_CODE_TTL_SECONDS = 10 * 60;
 const MAX_LOGIN_CODE_ATTEMPTS = 5;
@@ -178,7 +194,7 @@ export function sessionFromCookieValue(cookieValue: string | undefined): Session
 
 export async function getCurrentUser(): Promise<UserRecord | null> {
   const cookieStore = await cookies();
-  const session = sessionFromCookieValue(cookieStore.get(SESSION_COOKIE)?.value);
+  const session = sessionFromCookieValue(readSessionCookie(cookieStore));
   if (!session) return null;
   return userFromSession(session);
 }

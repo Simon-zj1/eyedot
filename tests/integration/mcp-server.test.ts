@@ -43,7 +43,7 @@ describe("MCP server", () => {
       serverInfo: { name: string };
       capabilities: { tools: unknown };
     };
-    expect(init.serverInfo.name).toBe("jev-exam");
+    expect(init.serverInfo.name).toBe("eyedot");
     expect(init.capabilities.tools).toBeDefined();
 
     const list = responses.find((response) => response.id === 2)?.result as {

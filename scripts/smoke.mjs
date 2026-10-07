@@ -40,7 +40,7 @@ async function request(path, options = {}) {
 
   const setCookie = response.headers.get("set-cookie");
   if (setCookie) {
-    const match = setCookie.match(/jev_session=[^;]+/);
+    const match = setCookie.match(/eyedot_session=[^;]+/);
     if (match) cookie = match[0];
   }
   return response;

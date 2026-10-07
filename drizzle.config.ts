@@ -5,6 +5,6 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "postgres://localhost:5432/jev_exam",
+    url: process.env.DATABASE_URL ?? "postgres://localhost:5432/eyedot",
   },
 });

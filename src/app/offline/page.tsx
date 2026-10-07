@@ -37,7 +37,7 @@ export default function OfflinePage() {
             <div>
               <strong>命令行与 Agent Skill</strong>
               <div className="small muted">
-                <code>npx jev-exam grade --material m.md --exam exam.json --engine offline</code>{" "}
+                <code>npx eyedot grade --material m.md --exam exam.json --engine offline</code>{" "}
                 可以在完全离线的情况下校验与判定（离线引擎只用于演示）。
               </div>
             </div>

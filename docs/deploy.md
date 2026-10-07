@@ -6,7 +6,7 @@
 
 | 项 | 值 |
 | --- | --- |
-| Vercel 项目 | `simon-zj1s-projects/jev-exam`（已联通 GitHub 仓库，push 自动部署） |
+| Vercel 项目 | `simon-zj1s-projects/eyedot`（已联通 GitHub 仓库，push 自动部署） |
 | 生产地址 | https://exam.simon-zj.top |
 | 自定义域名 | `exam.simon-zj.top`（已绑定并解析到 Vercel） |
 | 数据库 | Neon（通过 Vercel 市场集成接入，自动注入 `DATABASE_URL` 等变量） |
@@ -18,8 +18,8 @@
 
 ```bash
 vercel --prod --yes                                  # 部署
-vercel env pull /tmp/jev-prod.env --environment=production --yes
-set -a; source /tmp/jev-prod.env; set +a
+vercel env pull /tmp/eyedot-prod.env --environment=production --yes
+set -a; source /tmp/eyedot-prod.env; set +a
 export DATABASE_URL="${DATABASE_URL_UNPOOLED:-$DATABASE_URL}"
 npm run db:migrate                                   # 按 migrations 建表 / 升级 schema
 ```
@@ -59,7 +59,7 @@ cloudflared tunnel --url http://localhost:3211     # 输出 https://xxx.trycloud
 
 最快的方式是仓库里已经放好的 Deploy Button：
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSimon-zj1%2Fjev-exam&env=AI_API_KEY&envDescription=%E5%87%BA%E9%A2%98%E6%A8%A1%E5%9E%8B%E7%9A%84%20key&project-name=jev-exam&repository-name=jev-exam)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FSimon-zj1%2Feyedot&env=AI_API_KEY&envDescription=%E5%87%BA%E9%A2%98%E6%A8%A1%E5%9E%8B%E7%9A%84%20key&project-name=eyedot&repository-name=eyedot)
 
 或者用命令行：
 
@@ -107,7 +107,7 @@ exam.simon-zj.top  CNAME  cname.vercel-dns.com
 
 ## 4. 把入口挂到个人网站
 
-入口链接在 `source/tech/tools/jev-exam/index.md` 里，改一处即可：
+入口链接在 `source/tech/tools/eyedot/index.md` 里，改一处即可：
 
 ```md
 <a class="button button--primary" href="https://exam.simon-zj.top/">打开应用</a>

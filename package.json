@@ -1,8 +1,8 @@
 {
-  "name": "jev-exam",
-  "version": "0.12.0",
+  "name": "eyedot",
+  "version": "0.13.0",
   "type": "module",
-  "description": "把上传的学习材料变成可自动判分的自助考试：出题交给 LLM，判定交给决策模型（TypeSafe Jev），报告与覆盖率可逐条核对。",
+  "description": "把上传的学习材料变成可自动判分的自助考试：出题交给 LLM，判定交给可替换的判定引擎（默认通用大模型，可切到 TypeSafe Jev 决策模型），报告与覆盖率可逐条核对。",
   "license": "MIT",
   "keywords": [
     "agent-skills",
@@ -14,16 +14,16 @@
     "exam-prep",
     "education"
   ],
-  "homepage": "https://www.simon-zj.top/tech/tools/jev-exam/",
+  "homepage": "https://www.simon-zj.top/tech/tools/eyedot/",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Simon-zj1/jev-exam.git"
+    "url": "git+https://github.com/Simon-zj1/eyedot.git"
   },
   "publishConfig": {
     "access": "public"
   },
   "bin": {
-    "jev-exam": "./bin/jev-exam.mjs"
+    "eyedot": "./bin/eyedot.mjs"
   },
   "files": [
     "bin",
@@ -61,7 +61,7 @@
     "test:watch": "vitest",
     "smoke": "node scripts/smoke.mjs",
     "healthcheck": "node scripts/check-production.mjs",
-    "set:jev-key": "node scripts/set-vercel-secret.mjs",
+    "set:typesafe-key": "node scripts/set-vercel-secret.mjs",
     "eval:judge": "tsx scripts/eval-judge.ts",
     "benchmark": "tsx scripts/eval-judge.ts --engine offline --json docs/benchmark-results.json",
     "feedback:golden": "tsx scripts/export-feedback.ts",

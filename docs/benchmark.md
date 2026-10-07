@@ -1,4 +1,4 @@
-# 主观题判定基准（Jev Exam Grading Benchmark）
+# 主观题判定基准（Eyedot Grading Benchmark）
 
 这份基准回答一个具体问题：**「一句话说没说中一个要点」这件事，机器判得准不准，准到什么程度？**
 

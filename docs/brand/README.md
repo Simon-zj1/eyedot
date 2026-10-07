@@ -59,7 +59,7 @@
 
 ```bash
 node scripts/render-brand-icons.mjs \
-  --also ~/blog/source/img/jev-exam/icon-180.png   # 站点在另一个仓库，PNG 只能复制过去
+  --also ~/blog/source/img/eyedot/icon-180.png   # 站点在另一个仓库，PNG 只能复制过去
 ```
 
 ## 相关文档

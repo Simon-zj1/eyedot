@@ -34,7 +34,7 @@ export default async function TermsPage() {
             <li>
               侵权通知：如果你是权利人，认为本站某处内容侵犯了你的权利，请把权利证明、具体定位和你的
               联系方式发到 <a href="mailto:simon_zj1@163.com">simon_zj1@163.com</a>（也可以走{" "}
-              <a href="https://github.com/Simon-zj1/jev-exam/issues" rel="noopener">
+              <a href="https://github.com/Simon-zj1/eyedot/issues" rel="noopener">
                 GitHub Issues
               </a>
               ）。收到有效通知后，我们会在合理期限内核实并删除或禁止访问相关材料。

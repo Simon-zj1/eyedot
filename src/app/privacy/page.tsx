@@ -74,7 +74,7 @@ export default async function PrivacyPage() {
           <h2>联系</h2>
           <p className="small muted">
             数据相关问题可以通过{" "}
-            <a href="https://github.com/Simon-zj1/jev-exam/issues" rel="noopener">
+            <a href="https://github.com/Simon-zj1/eyedot/issues" rel="noopener">
               GitHub Issues
             </a>{" "}
             提出。也可以查看<Link href="/terms">服务条款</Link>。

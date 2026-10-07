@@ -7,7 +7,7 @@
  * 找不到 Chrome 直接报错退出，而不是留下过期的 PNG 让人以为已经更新过。
  *
  *   node scripts/render-brand-icons.mjs
- *   node scripts/render-brand-icons.mjs --also ~/blog/source/img/jev-exam/icon-180.png
+ *   node scripts/render-brand-icons.mjs --also ~/blog/source/img/eyedot/icon-180.png
  *
  * 改图标时三处必须同步：docs/brand/icon.svg、src/app/icon.svg、src/components/brand-mark.tsx。
  * 本脚本只负责把 docs/brand/icon.svg 导出成位图，不检查那三处是否一致。

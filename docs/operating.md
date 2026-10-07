@@ -39,9 +39,9 @@ Neon 的数据库级备份依赖控制台开启 PITR。应用层面每个用户�
 拿到 unpooled `DATABASE_URL` 后，平台级逻辑备份可以用 `pg_dump`：
 
 ```bash
-set -a; source /tmp/jev-prod.env; set +a
+set -a; source /tmp/eyedot-prod.env; set +a
 pg_dump "$DATABASE_URL_UNPOOLED" --no-owner --clean \
-  --file="jev-exam-$(date +%F-%H%M).sql"
+  --file="eyedot-$(date +%F-%H%M).sql"
 ```
 
 建议频率：每周一次，升级为付费档后由 Neon 的 PITR 覆盖更短窗口。

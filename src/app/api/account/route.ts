@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireUserFromRequest } from "@/lib/auth/request";
-import { SESSION_COOKIE } from "@/lib/auth/session";
+import { SESSION_COOKIE_NAMES } from "@/lib/auth/session";
 import { toErrorResponse, ValidationError } from "@/lib/errors";
 import { deleteAccountForUser } from "@/lib/services/account";
 
@@ -17,7 +17,9 @@ export async function DELETE(request: NextRequest) {
 
     const response = NextResponse.json({ deleted: true });
     // 删号后把会话 Cookie 一起清掉，否则浏览器还留着一个指向不存在用户的会话
-    response.cookies.set(SESSION_COOKIE, "", { path: "/", maxAge: 0 });
+    for (const name of SESSION_COOKIE_NAMES) {
+      response.cookies.set(name, "", { path: "/", maxAge: 0 });
+    }
     return response;
   } catch (error) {
     const { status, body } = toErrorResponse(error);

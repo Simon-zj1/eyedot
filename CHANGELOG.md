@@ -1,5 +1,39 @@
 # 更新日志
 
+## v0.13.0 · 2026-10-07
+
+### 改名收尾：仓库名、包名、命令行与 URL
+
+上一版只改了产品名，仓库、包、命令、网址还是 `jev-exam`。这一版全部对齐：
+
+| 位置 | 之前 | 现在 |
+| --- | --- | --- |
+| GitHub 仓库 | `Simon-zj1/jev-exam` | `Simon-zj1/eyedot` |
+| npm 包名 | `jev-exam` | `eyedot` |
+| CLI | `npx jev-exam ...` | `npx eyedot ...` |
+| MCP server | `jev-exam` | `eyedot` |
+| 网站路径 | `/tech/tools/jev-exam/` | `/tech/tools/eyedot/` |
+| 示例报告 | `/demo/jev-exam-report.html` | `/demo/eyedot-report.html` |
+| 本机密钥目录 | `~/.config/jev-exam/` | `~/.config/eyedot/` |
+
+### 改名不伤数据
+
+只换新标识、不认旧标识，等于改名当天把在线用户踢下线、把别人存好的 API Key 变成乱码。
+所以旧标识一律**只读不写**：
+
+- **会话 Cookie**：`eyedot_session` 优先，回退读 `jev_session`；退出登录时两个名字都清。
+- **会话签名与 BYOK 加密**：域分隔标签换成 `eyedot/session`、`eyedot/byok`，旧标签的
+  cookie 与密文仍然解得开（短路的 `||`/`??` 让常见路径不额外派生密钥）。
+- **登录验证码**：改名当天已经发出去的验证码仍然验得过，不用让用户重新等一封邮件。
+- **本地草稿与主题**：`eyedot-draft-*` / `eyedot-theme` 优先，回退读旧键。
+- 新增 `tests/unit/crypto.test.ts` 把这些回退路径钉住（旧令牌、旧密文、旧验证码哈希）。
+
+### 文档
+
+- README 中英双语的「判定引擎」表述改为可替换口径：默认通用大模型判定，
+  配置 `TYPESAFE_API_KEY` 后切到 TypeSafe Jev，`lexical` 是离线演示基线。
+- `npm run set:jev-key` 更名为 `npm run set:typesafe-key`（写的是 TypeSafe 的 key）。
+
 ## v0.12.0 · 2026-10-07
 
 ### 品牌

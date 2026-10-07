@@ -7,7 +7,7 @@
  *   1. 静态资源（/_next/static/**、图标）走缓存优先，回访更快；
  *   2. 导航请求失败时回落到 /offline，把「哪些能用、哪些要联网」讲清楚。
  */
-const CACHE = "jev-exam-static-v1";
+const CACHE = "eyedot-static-v1";
 const OFFLINE_URL = "/offline";
 const PRECACHE = [OFFLINE_URL, "/icon.svg", "/apple-icon.png"];
 

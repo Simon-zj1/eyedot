@@ -1,4 +1,4 @@
-import { SESSION_COOKIE, sessionFromCookieValue, userFromSession } from "@/lib/auth/session";
+import { readSessionCookie, sessionFromCookieValue, userFromSession } from "@/lib/auth/session";
 import type { UserRecord } from "@/lib/db/types";
 import { UnauthorizedError } from "@/lib/errors";
 
@@ -8,7 +8,7 @@ type CookieCarrier = {
 
 /** 路由处理器里解析当前用户（不依赖 next/headers，便于测试直接调用）。 */
 export async function userFromRequest(request: CookieCarrier): Promise<UserRecord | null> {
-  const session = sessionFromCookieValue(request.cookies.get(SESSION_COOKIE)?.value);
+  const session = sessionFromCookieValue(readSessionCookie(request.cookies));
   if (!session) return null;
   return userFromSession(session);
 }

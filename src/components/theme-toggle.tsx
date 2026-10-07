@@ -27,7 +27,7 @@ export function ThemeToggle() {
         const next: Theme = readTheme() === "dark" ? "light" : "dark";
         document.documentElement.dataset.theme = next;
         try {
-          window.localStorage.setItem("jev-exam-theme", next);
+          window.localStorage.setItem("eyedot-theme", next);
         } catch {
           /* 隐私模式下忽略 */
         }

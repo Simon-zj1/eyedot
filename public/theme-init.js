@@ -1,5 +1,7 @@
 try {
-  if (localStorage.getItem("jev-exam-theme") === "dark") {
+  // 先读新键，读不到再读改名前的旧键：不让一次改名把用户选好的主题丢掉。
+  var theme = localStorage.getItem("eyedot-theme") || localStorage.getItem("jev-exam-theme");
+  if (theme === "dark") {
     document.documentElement.dataset.theme = "dark";
   }
 } catch {

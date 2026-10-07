@@ -33,7 +33,7 @@ export default async function HomePage() {
               <Link className="btn btn--primary" href="/login">
                 用邀请码登录
               </Link>
-              <a className="btn btn--quiet" href="/demo/jev-exam-report.html">
+              <a className="btn btn--quiet" href="/demo/eyedot-report.html">
                 先看一份示例报告
               </a>
             </div>

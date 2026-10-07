@@ -10,7 +10,7 @@
  *   - render_report    把报告渲染成离线单文件 HTML
  *
  * 注册方式（客户端配置里）：
- *   { "mcpServers": { "jev-exam": { "command": "npx", "args": ["-y", "jev-exam@latest", "mcp"] } } }
+ *   { "mcpServers": { "eyedot": { "command": "npx", "args": ["-y", "eyedot@latest", "mcp"] } } }
  */
 import { createInterface } from "node:readline";
 import { resolve } from "node:path";
@@ -28,7 +28,7 @@ import { buildStudyReport, renderReportHtml, type StudyReport } from "@/lib/repo
 import { scanMaterial, summarizeHazards } from "@/lib/security/untrusted";
 import type { DecisionEngine, GeneratedQuestion, Topic } from "@/lib/types";
 
-const SERVER_INFO = { name: "jev-exam", version: "0.3.0" };
+const SERVER_INFO = { name: "eyedot", version: "0.3.0" };
 const PROTOCOL_VERSION = "2024-11-05";
 
 type JsonRpcRequest = {
