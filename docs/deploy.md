@@ -2,13 +2,14 @@
 
 目标：把 Web 端跑在公网上，接进个人网站作为入口。全程约 20 分钟，免费额度够用。
 
-## 当前部署状态（2026-09-27）
+## 当前部署状态（2026-10-07）
 
 | 项 | 值 |
 | --- | --- |
-| Vercel 项目 | `simon-zj1s-projects/eyedot`（已联通 GitHub 仓库，push 自动部署） |
+| GitHub 仓库 | `Simon-zj1/eyedot`（旧地址 `Simon-zj1/jev-exam` 由 GitHub 自动跳转） |
+| Vercel 项目 | `simon-zj1s-projects/eyedot`（已联通上面的仓库，push 自动部署） |
 | 生产地址 | https://exam.simon-zj.top |
-| 自定义域名 | `exam.simon-zj.top`（已绑定并解析到 Vercel） |
+| 域名 | `exam.simon-zj.top`（生产域名）、`eyedot.vercel.app`（项目别名）；旧的 `jev-exam.vercel.app` 仍然指向本项目 |
 | 数据库 | Neon（通过 Vercel 市场集成接入，自动注入 `DATABASE_URL` 等变量） |
 | 已设置的环境变量 | `SESSION_SECRET`、`INITIAL_INVITE_CODES`、Neon 注入的 `DATABASE_URL` 系列；登录邮件使用 `RESEND_API_KEY` + `AUTH_EMAIL_FROM=no-reply@simon-zj.top`；出题/LLM 判定使用 `PLATFORM_LLM_*`（DeepSeek `deepseek-flash`） |
 | 当前判定 | 未配置 TypeSafe Jev，运行时使用 `llm-judge` 基线；配置有效 `TYPESAFE_API_KEY` 后自动切回 Jev |
