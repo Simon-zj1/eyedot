@@ -1,8 +1,13 @@
-import { DAILY_SPEND_CAP_MICRO_USD, PLATFORM_DAILY_SPEND_CAP_MICRO_USD } from "@/lib/config";
+import {
+  DAILY_SPEND_CAP_MICRO_USD,
+  PLATFORM_DAILY_SPEND_CAP_MICRO_USD,
+  type PlatformCallKind,
+} from "@/lib/config";
 import { getStore } from "@/lib/db";
-import type { LlmUsageOrigin, LlmUsageRecord } from "@/lib/db/types";
+import type { LlmUsageOrigin, LlmUsageRecord, UserRecord } from "@/lib/db/types";
 import { SpendCapExceededError } from "@/lib/errors";
 import { dayKey } from "@/lib/ids";
+import { assertCreditsForStart, chargePlatformUsage } from "@/lib/services/credits";
 import {
   estimateCostMicroUsd,
   formatMicroUsd,
@@ -20,6 +25,7 @@ export async function recordChatUsage(
   userId: string,
   events: ChatUsageEvent[],
   origin: LlmUsageOrigin = "platform",
+  ref: string | null = null,
 ): Promise<void> {
   if (events.length === 0) return;
 
@@ -51,6 +57,24 @@ export async function recordChatUsage(
   for (const [model, delta] of aggregated) {
     await store.incrementLlmUsage(userId, day, model, origin, delta);
   }
+
+  // 平台 Key 的调用要同时扣积分。放在这里而不是各业务函数里：出题、判定、问答都走这个函数，
+  // 写一次就全覆盖；分成两处写，漏掉一处就等于「用了不扣钱」，而且不会报错。
+  if (origin === "platform") {
+    await chargePlatformUsage(userId, events, ref);
+  }
+}
+
+/**
+ * 平台调用的总闸门：既看「今天烧了多少」（防止一次出题就很贵），
+ * 也看「还剩多少积分」（这是真正的钱包）。
+ */
+export async function assertPlatformCallAllowed(
+  user: UserRecord,
+  kind: PlatformCallKind,
+): Promise<void> {
+  await assertWithinSpendCap(user.id);
+  await assertCreditsForStart(user, kind);
 }
 
 export type TodayUsage = {

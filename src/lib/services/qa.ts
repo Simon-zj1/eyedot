@@ -14,9 +14,9 @@ import type { QaAnswer, QaIssue } from "@/lib/qa/types";
 import { consumeQuota, refundQuota } from "@/lib/quota";
 import { retrieveEvidence, type RetrievalResult } from "@/lib/retrieval";
 import { scanMaterial } from "@/lib/security/untrusted";
-import { readByok } from "@/lib/services/byok";
+import { assertByokConfigured, byokForMode } from "@/lib/services/byok";
 import { getMaterialForUser } from "@/lib/services/materials";
-import { assertWithinSpendCap, recordChatUsage } from "@/lib/services/usage";
+import { assertPlatformCallAllowed, recordChatUsage } from "@/lib/services/usage";
 
 /**
  * 材料问答：先检索证据，再让模型带着编号回答，最后逐条校验引注。
@@ -72,7 +72,8 @@ export async function askMaterialQuestion(
     };
   }
 
-  const selection = resolveChatProvider(readByok(user)?.llm ?? null);
+  assertByokConfigured(user);
+  const selection = resolveChatProvider(byokForMode(user)?.llm ?? null);
   if (!selection.provider) {
     return {
       ...base,
@@ -84,7 +85,7 @@ export async function askMaterialQuestion(
   }
 
   if (selection.countsAgainstQuota) {
-    await assertWithinSpendCap(user.id);
+    await assertPlatformCallAllowed(user, "ask");
     await consumeQuota(user.id, { ask: 1 });
   }
 
@@ -117,6 +118,7 @@ export async function askMaterialQuestion(
       },
     ],
     selection.countsAgainstQuota ? "platform" : "byok",
+    material.id,
   );
 
   const check = verifyCitations(response.text.trim(), retrieval.evidence, {

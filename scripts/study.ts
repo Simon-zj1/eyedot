@@ -16,7 +16,9 @@
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
+import { MAX_MATERIAL_CHARS } from "@/lib/config";
 import { verifyCoverage, coverageSummary } from "@/lib/coverage";
+import { buildExplainUserPrompt, EXPLAIN_SYSTEM_PROMPT } from "@/lib/explain/prompt";
 import { resolveDecisionEngine } from "@/lib/engine";
 import { LexicalJudgeEngine } from "@/lib/engine/lexical";
 import { LLMJudgeEngine } from "@/lib/engine/llm-judge";
@@ -34,6 +36,7 @@ import {
   type StudyReport,
 } from "@/lib/report";
 import { scanMaterial, summarizeHazards } from "@/lib/security/untrusted";
+import { sanitizeExplainerHtml } from "@/lib/security/html-sandbox";
 import type { DecisionEngine, GeneratedQuestion, Topic } from "@/lib/types";
 import { z } from "zod";
 
@@ -246,6 +249,50 @@ async function commandExtract(flags: Parsed): Promise<void> {
   for (const warning of result.warnings) line(`提示：${warning}`);
   line(outPath ? `正文已写入：${outPath}` : "正文：");
   if (!outPath && !flags.json) line(result.text);
+}
+
+/**
+ * 生成一页图解（answer-me-with-html 的命令行入口）。
+ *
+ * 与网页端共用同一套提示词与同一套清洗：产物都是单文件 HTML，
+ * 所以「网页里看到的图」和「命令行生成的图」不会变成两个东西。
+ */
+async function commandExplain(flags: Parsed): Promise<void> {
+  const materialPath = flags.material;
+  const topic = flags.topic;
+  if (typeof materialPath !== "string" || typeof topic !== "string") {
+    fail("用法：study.ts explain --material <file> --topic <知识点> [--out explain.html]");
+  }
+
+  const provider = resolvePlatformChatProvider();
+  if (!provider) {
+    fail(
+      "没有可用的模型：设置 PLATFORM_LLM_API_KEY（或 TYPESAFE_API_KEY）后重试。" +
+        "图解是生成式调用，离线词面引擎做不了。",
+    );
+  }
+
+  const rawText = await readText(materialPath);
+  const scanned = scanMaterial(rawText, { maxChars: MAX_MATERIAL_CHARS });
+  const response = await provider.complete({
+    system: EXPLAIN_SYSTEM_PROMPT,
+    user: buildExplainUserPrompt({
+      materialTitle: materialPath.split("/").pop() ?? materialPath,
+      topic,
+      materialExcerpt: scanned.promptText,
+    }),
+    temperature: 0.3,
+    maxTokens: 6000,
+  });
+
+  const { html, removed } = sanitizeExplainerHtml(response.text);
+  if (!html.trim()) fail("模型没有产出可用的 HTML，请换个知识点再试。");
+
+  const outPath = typeof flags.out === "string" ? flags.out : "explain.html";
+  await writeText(outPath, html);
+  line(`图解已写入：${outPath}（${html.length} 字符，模型 ${response.model}）`);
+  if (removed.length > 0) line(`出于安全考虑已去掉：${removed.join("、")}`);
+  if (scanned.hazards.length > 0) line(`材料安全提示：${summarizeHazards(scanned.hazards)}`);
 }
 
 async function commandVerify(flags: Parsed): Promise<void> {
@@ -468,6 +515,7 @@ function printHelp(): void {
   render          --report report.json --out report.html [--md report.md]
   demo            [--out docs/demo]
   extract         --file 材料.pdf|材料.docx|材料.md [--out material.md] [--json extract.json]
+  explain         --material material.md --topic 知识点 [--out explain.html]
 
 试卷文件（exam.json）：
   { "title": "...", "generator": "agent", "topics": [...], "questions": [...] }
@@ -494,6 +542,8 @@ async function main(): Promise<void> {
       return commandDemo(flags);
     case "extract":
       return commandExtract(flags);
+    case "explain":
+      return commandExplain(flags);
     default:
       printHelp();
   }

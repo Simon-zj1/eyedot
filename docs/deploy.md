@@ -25,6 +25,10 @@ export DATABASE_URL="${DATABASE_URL_UNPOOLED:-$DATABASE_URL}"
 npm run db:migrate                                   # 按 migrations 建表 / 升级 schema
 ```
 
+> **升级顺序**：v0.14.0 起多了 `credit_ledger` / `redemption_codes` / `explanations` 三张表与
+> `users.model_mode` 一列（`drizzle/0008_*.sql`）。先在目标库跑 `npm run db:migrate`，再让新版上线——
+> 反过来的话，新代码查积分余额会直接报表不存在。这一步是向后兼容的：旧版本代码不认识新表也不会报错。
+
 > 注意：`*.vercel.app` 在国内部分网络会被 TLS 重置（实测直连 000、走代理 200，而 `vercel.com`
 > 直连正常）。所以**必须绑定自定义域名**并对国内可达性做验证；长期面向国内用户建议国内云主机 + 备案。
 

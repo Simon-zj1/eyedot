@@ -33,7 +33,7 @@ function makeExam(): unknown {
 }
 
 describe("MCP server", () => {
-  it("完成 initialize 握手并暴露四个工具", () => {
+  it("完成 initialize 握手并暴露五个工具", () => {
     const responses = rpc([
       { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2024-11-05" } },
       { jsonrpc: "2.0", id: 2, method: "tools/list" },
@@ -51,6 +51,7 @@ describe("MCP server", () => {
     };
     expect(list.tools.map((tool) => tool.name).sort()).toEqual([
       "answer_template",
+      "explain_page",
       "grade_answers",
       "render_report",
       "verify_exam",

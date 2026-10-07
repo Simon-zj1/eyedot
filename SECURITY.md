@@ -73,9 +73,12 @@
 
 1. **给 key 设消费上限。** 出题会按 token 计费，Jev 按输入计费。多数供应商都能给单个
    key 或 project 设额度，这是唯一能兜住"有人刷你的 URL"的硬防线。
-2. **保持邀请制。** 本项目的默认准入就是邀请码；不要为了演示方便把注册开放成任何人可用。
-3. **确认额度闸门生效。** `src/lib/config.ts` 里的每日上限（材料 3 / 题目 100 / 判定 1000 / 问答 200）
-   是第二道防线；上线前用 `npm test` 里的额度用例确认它没被改坏。
+2. **给平台额度装上两道闸门。** 注册已开放（邮箱验证通过即可注册），所以准入不再靠邀请码，
+   而靠积分与上限：`credit_ledger` 是钱包（注册送 300 积分，用完即止），
+   `src/lib/config.ts` 里的每日上限（材料 3 / 题目 100 / 判定 1000 / 问答 200 / 图解 20）
+   与 `DAILY_SPEND_CAP_MICRO_USD`、`PLATFORM_DAILY_SPEND_CAP_MICRO_USD` 是第二道。
+   上线前用 `npm test` 里 `tests/integration/credits.test.ts` 确认它们没被改坏。
+   需要临时关闸时把 `REGISTRATION_MODE` 设成 `invite`，不用回滚代码。
 4. **在反向代理上再加一层限流。** 应用层已有进程内限流
    （[src/lib/rate-limit.ts](src/lib/rate-limit.ts)：登录 10/分、解析 10/分、出题 12/分、
    判定 90/分、问答 30/分，按 `x-forwarded-for` 计数），但**计数存在单个实例的内存里**，

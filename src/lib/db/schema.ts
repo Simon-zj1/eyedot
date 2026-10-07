@@ -29,6 +29,11 @@ export const users = pgTable(
     email: text("email").notNull(),
     byokEncrypted: text("byok_encrypted"),
     /**
+     * 模型来源：platform = 用平台额度（扣积分），byok = 用自己填的 Key（不扣积分）。
+     * 存用户的选择而不是「有没有 key」：有 key 的人也可能想先用平台额度试。
+     */
+    modelMode: text("model_mode").notNull().default("platform"),
+    /**
      * 会话版本。发放 Cookie 时把版本写入签名载荷，读取时与用户当前版本比对。
      * 递增版本即可让该用户的所有旧 Cookie 失效，不需要服务端会话表也能做“退出所有设备”。
      */
@@ -350,4 +355,73 @@ export const reviewLogs = pgTable(
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("review_logs_user_idx").on(table.userId, table.reviewedAt)],
+);
+
+/**
+ * 积分账本（append-only）。
+ *
+ * 为什么不是「在 users 上放一个 balance 字段」：余额只是最后一行账的结论，
+ * 而用户真正会问的是「我的积分怎么少了 69 分」。只存余额就永远答不上这个问题，
+ * 也查不出计费 bug。所以余额由账本累加得出，每一笔都带来源（谁花的、花在哪、关联哪次操作）。
+ *
+ * 金额单位是毫积分（1 积分 = 1000 毫积分），整数相减，不用浮点。
+ */
+export const creditLedger = pgTable(
+  "credit_ledger",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** grant = 注册赠送 / bonus = 邀请码加成 / redeem = 兑换码 / spend = 平台调用扣费 / adjust = 人工调整 */
+    kind: text("kind").notNull(),
+    /** 正数入账，负数出账 */
+    amountMilli: integer("amount_milli").notNull(),
+    balanceAfterMilli: integer("balance_after_milli").notNull(),
+    /** 关联对象：attempt / exam / material / 兑换码 */
+    ref: text("ref"),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("credit_ledger_user_idx").on(table.userId, table.createdAt)],
+);
+
+/**
+ * 充值码。
+ *
+ * v1 不做在线支付：先由人工发码（转账 → 发码 → 用户兑换），既能验证「愿不愿意付钱」，
+ * 又不需要企业主体和支付通道。表结构留了 maxUses，方便以后做成批量分发的体验码。
+ */
+export const redemptionCodes = pgTable("redemption_codes", {
+  code: text("code").primaryKey(),
+  creditsMilli: integer("credits_milli").notNull(),
+  maxUses: integer("max_uses").notNull().default(1),
+  usedCount: integer("used_count").notNull().default(0),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * 一页图解（answer-me-with-html 的产物）。
+ *
+ * 存 HTML 而不是截图：它是可复制、可离线打开的产物，和报告一样属于用户的数据资产，
+ * 导出与删除都要能跟着材料走（外键 cascade）。渲染时必须走沙箱，见 sanitizeExplainerHtml。
+ */
+export const explanations = pgTable(
+  "explanations",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    materialId: text("material_id")
+      .notNull()
+      .references(() => materials.id, { onDelete: "cascade" }),
+    topic: text("topic").notNull(),
+    html: text("html").notNull(),
+    model: text("model").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("explanations_material_idx").on(table.materialId, table.createdAt)],
 );

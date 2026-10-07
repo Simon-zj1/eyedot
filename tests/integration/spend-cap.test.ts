@@ -17,6 +17,7 @@ import {
   FakeChatProvider,
   FakeEngine,
   SAMPLE_MATERIAL,
+  grantCredits,
   loginWithInvite,
   noul,
   resetOverrides,
@@ -45,7 +46,9 @@ describe("模型消费上限", () => {
 
   it("平台级熔断：合计用量由所有用户汇总，单人没超也会被拦住", async () => {
     // 另一个用户花掉接近平台预算的钱（模拟「很多用户各花一点」）
-    await recordChatUsage("someone-else", [
+    const other = await store.createUser("someone-else@example.com");
+    await grantCredits(other.id, 10_000);
+    await recordChatUsage(other.id, [
       { model: "gpt-4o", inputTokens: 4_000_000, outputTokens: 0 },
     ]);
 

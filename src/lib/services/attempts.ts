@@ -7,11 +7,11 @@ import { gradeQuestion, type AnswerPayload } from "@/lib/grading";
 import { topicKeyOf } from "@/lib/ids";
 import { usageCollector } from "@/lib/llm/usage";
 import { consumeQuota, refundQuota } from "@/lib/quota";
-import { readByok } from "@/lib/services/byok";
+import { assertByokConfigured, byokForMode } from "@/lib/services/byok";
 import { getExamForUser } from "@/lib/services/generation";
 import { toGeneratedQuestion } from "@/lib/services/questions";
 import { syncReviewsFromAttempt } from "@/lib/services/reviews";
-import { assertWithinSpendCap, recordChatUsage } from "@/lib/services/usage";
+import { assertPlatformCallAllowed, recordChatUsage } from "@/lib/services/usage";
 import type { AnswerKey, Judgment } from "@/lib/types";
 
 export type SubmitAnswerInput = {
@@ -73,7 +73,8 @@ export async function judgeOneAnswerForUser(
 
   const attempt = (await store.getOpenAttempt(exam.id, user.id)) ?? (await store.createAttempt(exam.id, user.id));
 
-  const byok = readByok(user);
+  assertByokConfigured(user);
+  const byok = byokForMode(user);
   const usage = usageCollector();
   const selection = resolveDecisionEngine({ byok, onChatUsage: usage.onChatUsage });
   const engine = selection.engine;
@@ -81,7 +82,7 @@ export async function judgeOneAnswerForUser(
   const needsEngine = question.type === "short_answer" || question.type === "cloze";
   let judgmentQuotaReserved = false;
   if (selection.countsAgainstQuota && needsEngine) {
-    await assertWithinSpendCap(user.id);
+    await assertPlatformCallAllowed(user, "judge");
     await consumeQuota(user.id, { judgment: 1 });
     judgmentQuotaReserved = true;
   }
@@ -107,6 +108,7 @@ export async function judgeOneAnswerForUser(
       user.id,
       usage.pending,
       selection.countsAgainstQuota ? "platform" : "byok",
+      attempt.id,
     );
   }
 

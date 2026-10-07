@@ -4,6 +4,8 @@ import type {
   AnswerRecord,
   AttemptRecord,
   BlueprintRecord,
+  CreditLedgerRecord,
+  ExplanationRecord,
   ExamRecord,
   FeedbackRecord,
   InviteCodeRecord,
@@ -15,17 +17,22 @@ import type {
   MasteryRecord,
   MaterialRecord,
   MistakeRecord,
+  ModelMode,
   NewBlueprint,
+  NewCreditLedgerEntry,
   NewExam,
+  NewExplanation,
   NewFeedback,
   NewJudgment,
   NewLoginChallenge,
   NewMaterial,
   NewMistake,
   NewQuestion,
+  NewRedemptionCode,
   NewReviewItem,
   NewReviewLog,
   QuestionRecord,
+  RedemptionCodeRecord,
   ReviewItemRecord,
   ReviewLogRecord,
   Store,
@@ -54,6 +61,9 @@ type MemoryState = {
   reviewLogs: ReviewLogRecord[];
   llmUsage: Map<string, LlmUsageRecord>;
   feedback: Map<string, FeedbackRecord>;
+  creditLedger: CreditLedgerRecord[];
+  redemptionCodes: Map<string, RedemptionCodeRecord>;
+  explanations: Map<string, ExplanationRecord>;
 };
 
 function emptyState(): MemoryState {
@@ -76,6 +86,9 @@ function emptyState(): MemoryState {
     reviewLogs: [],
     llmUsage: new Map(),
     feedback: new Map(),
+    creditLedger: [],
+    redemptionCodes: new Map(),
+    explanations: new Map(),
   };
 }
 
@@ -90,13 +103,13 @@ export class MemoryStore implements Store {
   constructor(key = "default") {
     this.key = key;
     const globalScope = globalThis as typeof globalThis & {
-      __jevExamMemoryStores?: Map<string, MemoryState>;
+      __eyedotMemoryStores?: Map<string, MemoryState>;
     };
-    globalScope.__jevExamMemoryStores ??= new Map();
-    let state = globalScope.__jevExamMemoryStores.get(key);
+    globalScope.__eyedotMemoryStores ??= new Map();
+    let state = globalScope.__eyedotMemoryStores.get(key);
     if (!state) {
       state = emptyState();
-      globalScope.__jevExamMemoryStores.set(key, state);
+      globalScope.__eyedotMemoryStores.set(key, state);
     }
     this.state = state;
   }
@@ -118,6 +131,7 @@ export class MemoryStore implements Store {
       id: createId("usr"),
       email: normalized,
       byokEncrypted: null,
+      modelMode: "platform",
       sessionVersion: 0,
       createdAt: new Date(),
     };
@@ -141,6 +155,87 @@ export class MemoryStore implements Store {
     const user = this.state.users.get(userId);
     if (!user) throw new Error("用户不存在");
     this.state.users.set(userId, { ...user, byokEncrypted: encrypted });
+  }
+
+  async setUserModelMode(userId: string, mode: ModelMode): Promise<void> {
+    const user = this.state.users.get(userId);
+    if (!user) throw new Error("用户不存在");
+    this.state.users.set(userId, { ...user, modelMode: mode });
+  }
+
+  async getCreditBalance(userId: string): Promise<number> {
+    return this.state.creditLedger
+      .filter((entry) => entry.userId === userId)
+      .reduce((total, entry) => total + entry.amountMilli, 0);
+  }
+
+  async applyCreditDelta(entry: NewCreditLedgerEntry): Promise<CreditLedgerRecord> {
+    if (!this.state.users.has(entry.userId)) throw new Error("用户不存在");
+    // 内存实现本来就是单进程串行执行，「读余额 → 追加一笔」等价于事务
+    const balance = await this.getCreditBalance(entry.userId);
+    const record: CreditLedgerRecord = {
+      ...entry,
+      id: createId("crl"),
+      balanceAfterMilli: balance + entry.amountMilli,
+      createdAt: new Date(),
+    };
+    this.state.creditLedger.push(record);
+    return record;
+  }
+
+  async listCreditLedger(userId: string, limit = 20): Promise<CreditLedgerRecord[]> {
+    return this.state.creditLedger
+      .filter((entry) => entry.userId === userId)
+      .slice()
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit);
+  }
+
+  async createRedemptionCodes(inputs: NewRedemptionCode[]): Promise<RedemptionCodeRecord[]> {
+    const created: RedemptionCodeRecord[] = [];
+    for (const input of inputs) {
+      const code = input.code.trim().toUpperCase();
+      if (this.state.redemptionCodes.has(code)) throw new Error(`兑换码已存在：${code}`);
+      const record: RedemptionCodeRecord = {
+        ...input,
+        code,
+        usedCount: input.usedCount ?? 0,
+        createdAt: new Date(),
+      };
+      this.state.redemptionCodes.set(code, record);
+      created.push(record);
+    }
+    return created;
+  }
+
+  async getRedemptionCode(code: string): Promise<RedemptionCodeRecord | null> {
+    return this.state.redemptionCodes.get(code.trim().toUpperCase()) ?? null;
+  }
+
+  async consumeRedemptionCode(code: string): Promise<boolean> {
+    const normalized = code.trim().toUpperCase();
+    const record = this.state.redemptionCodes.get(normalized);
+    if (!record) return false;
+    if (record.expiresAt && record.expiresAt.getTime() < Date.now()) return false;
+    if (record.usedCount >= record.maxUses) return false;
+    this.state.redemptionCodes.set(normalized, { ...record, usedCount: record.usedCount + 1 });
+    return true;
+  }
+
+  async createExplanation(input: NewExplanation): Promise<ExplanationRecord> {
+    const record: ExplanationRecord = { ...input, id: createId("exp"), createdAt: new Date() };
+    this.state.explanations.set(record.id, record);
+    return record;
+  }
+
+  async getExplanation(id: string): Promise<ExplanationRecord | null> {
+    return this.state.explanations.get(id) ?? null;
+  }
+
+  async listExplanationsByMaterial(materialId: string): Promise<ExplanationRecord[]> {
+    return [...this.state.explanations.values()]
+      .filter((record) => record.materialId === materialId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async revokeUserSessions(userId: string): Promise<void> {

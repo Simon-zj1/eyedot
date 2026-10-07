@@ -45,8 +45,8 @@ describe("端到端闭环（服务层）", () => {
     resetOverrides();
   });
 
-  it("邀请码注册 → 出题 → 作答 → 判定 → 错题本 → 重考", async () => {
-    // 1. 邀请制登录
+  it("注册 → 出题 → 作答 → 判定 → 错题本 → 重考", async () => {
+    // 1. 注册登录（开放注册；邀请码只是额度加成）
     const login = await loginWithInvite("learner@example.com", "TEST-CODE");
     expect(login.created).toBe(true);
     expect(login.user.email).toBe("learner@example.com");
@@ -54,8 +54,9 @@ describe("端到端闭环（服务层）", () => {
     const secondLogin = await loginWithInvite("learner@example.com");
     expect(secondLogin.created).toBe(false);
 
-    // 无邀请码的新用户被拒绝
-    await expect(loginWithInvite("stranger@example.com")).rejects.toThrow(/邀请码/);
+    // 没有邀请码也能注册
+    await expect(loginWithInvite("stranger@example.com")).resolves.toBeTruthy();
+    // 但填了错的邀请码仍然会被拒绝（用户以为有加成却没拿到，必须当场告诉他）
     await expect(loginWithInvite("bad@example.com", "WRONG-CODE")).rejects.toThrow(
       /邀请码无效/,
     );

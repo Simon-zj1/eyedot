@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.13.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.14.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/standard-Agent%20Skills-5b6ee1" alt="Agent Skills">
   <img src="https://img.shields.io/badge/Next.js-15-000000" alt="Next.js">
@@ -208,9 +208,12 @@ may not be found, and the app then says so instead of guessing.
 Costs shown in settings are estimates derived from public price lists, useful for spotting trends and
 setting caps, not a provider invoice. The platform spend cap (default $0.50 per user per day, platform keys
 only) blocks the *next* model call once today's estimate is used up, so it can overshoot by one request.
-Daily count quotas (material / question / judgment / ask) are reserved atomically in a database transaction,
+Registration is open: an email code is enough, and an invite code is an optional credit bonus.
+Daily count quotas (material / question / judgment / ask / explain) are reserved atomically in a database transaction,
 and excess question-generation quota is refunded if the generator returns fewer questions than requested.
-BYOK is never capped by the platform.
+Model access is an explicit choice: bring your own key (never capped, never charged), or spend platform
+credits at 1.5× the official price — 1 credit = 1,000 tokens of value, with every debit written to an
+append-only `credit_ledger` you can audit line by line.
 
 There is no native app yet: the delivery surfaces are web, PWA, CLI, Agent Skill and MCP. The PWA caches
 **static assets only** — pages are server-rendered per logged-in user, and caching them in Cache Storage

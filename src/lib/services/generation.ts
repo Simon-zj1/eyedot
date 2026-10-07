@@ -11,9 +11,9 @@ import { ForbiddenError, NotFoundError, ValidationError } from "@/lib/errors";
 import { resolveGenerationProvider } from "@/lib/generator";
 import { consumeQuota, refundQuota } from "@/lib/quota";
 import { usageCollector } from "@/lib/llm/usage";
-import { readByok } from "@/lib/services/byok";
+import { assertByokConfigured, byokForMode } from "@/lib/services/byok";
 import { getMaterialForUser } from "@/lib/services/materials";
-import { assertWithinSpendCap, recordChatUsage } from "@/lib/services/usage";
+import { assertPlatformCallAllowed, recordChatUsage } from "@/lib/services/usage";
 import { createId } from "@/lib/ids";
 import type { AnswerKey, GeneratedQuestion, Outline, Topic } from "@/lib/types";
 
@@ -29,13 +29,14 @@ export async function generateOutlineForMaterial(
   materialId: string,
   options: { topicCount?: number } = {},
 ): Promise<OutlineResult> {
+  assertByokConfigured(user);
   const material = await getMaterialForUser(user, materialId);
   const usage = usageCollector();
   const { provider, countsAgainstQuota } = resolveGenerationProvider({
-    byok: readByok(user),
+    byok: byokForMode(user),
     onChatUsage: usage.onChatUsage,
   });
-  if (countsAgainstQuota) await assertWithinSpendCap(user.id);
+  if (countsAgainstQuota) await assertPlatformCallAllowed(user, "generate");
 
   const topicCount = clamp(options.topicCount ?? 6, 2, 12);
   let outline: Outline;
@@ -46,7 +47,12 @@ export async function generateOutlineForMaterial(
     });
   } finally {
     // 调用已经发生、成本已经产生，失败也要记账
-    await recordChatUsage(user.id, usage.pending, countsAgainstQuota ? "platform" : "byok");
+    await recordChatUsage(
+      user.id,
+      usage.pending,
+      countsAgainstQuota ? "platform" : "byok",
+      material.id,
+    );
   }
 
   const blueprint = await getStore().saveBlueprint({
@@ -82,6 +88,7 @@ export async function createExamForMaterial(
   user: UserRecord,
   input: CreateExamInput,
 ): Promise<CreateExamResult> {
+  assertByokConfigured(user);
   const material = await getMaterialForUser(user, input.materialId);
   const blueprint = await getBlueprintForMaterial(material);
 
@@ -94,11 +101,11 @@ export async function createExamForMaterial(
 
   const usage = usageCollector();
   const { provider, countsAgainstQuota } = resolveGenerationProvider({
-    byok: readByok(user),
+    byok: byokForMode(user),
     onChatUsage: usage.onChatUsage,
   });
   if (countsAgainstQuota) {
-    await assertWithinSpendCap(user.id);
+    await assertPlatformCallAllowed(user, "generate");
     await consumeQuota(user.id, { question: count });
   }
 
@@ -114,7 +121,12 @@ export async function createExamForMaterial(
     if (countsAgainstQuota) await refundQuota(user.id, { question: count });
     throw error;
   } finally {
-    await recordChatUsage(user.id, usage.pending, countsAgainstQuota ? "platform" : "byok");
+    await recordChatUsage(
+      user.id,
+      usage.pending,
+      countsAgainstQuota ? "platform" : "byok",
+      material.id,
+    );
   }
 
   const store = getStore();

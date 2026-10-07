@@ -66,13 +66,13 @@ export function LoginForm() {
         />
       </div>
       <div className="field">
-        <label htmlFor="invite">邀请码（首次使用必填）</label>
+        <label htmlFor="invite">邀请码（可选，填了多送 100 积分）</label>
         <input
           id="invite"
           type="text"
           value={inviteCode}
           onChange={(event) => setInviteCode(event.target.value)}
-          placeholder="例如 DEV-INVITE"
+          placeholder="没有就留空"
           disabled={codeRequested}
         />
       </div>

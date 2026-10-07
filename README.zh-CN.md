@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.13.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.14.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/standard-Agent%20Skills-5b6ee1" alt="Agent Skills">
   <img src="https://img.shields.io/badge/Next.js-15-000000" alt="Next.js">
@@ -117,15 +117,17 @@ cp .env.example .env        # 可选：不配置任何密钥也能跑（离线�
 npm run dev                 # http://localhost:3000
 ```
 
-首次注册需要一个邀请码；已有账号和首次注册都必须完成邮箱验证码。
+注册只需邮箱验证码（不需要密码，也不需要邀请码）；邀请码是可选的额度加成。
 本地开发默认把验证码输出到控制台；生产环境必须配置邮件通道。
+想临时关闸时把 `REGISTRATION_MODE=invite` 打开即可，不需要回滚代码。
 
 ```bash
-echo 'INITIAL_INVITE_CODES=DEV-INVITE' >> .env
+echo 'INITIAL_INVITE_CODES=DEV-INVITE' >> .env   # 可选：邀请码（注册多送 100 积分）
 ```
 
-Web 版包含：邀请制登录、材料库、**上传 PDF/Word 自动解析**、知识点确认、作答、逐点判定报告、
-**就材料提问（答案带出处）**、错题本与掌握度、**间隔重复复习（FSRS-5）**、每日额度、BYOK。
+Web 版包含：邮箱注册登录、材料库、**上传 PDF/Word 自动解析**、知识点确认、作答、逐点判定报告、
+**就材料提问（答案带出处）**、**一页图解（answer-me-with-html）**、错题本与掌握度、
+**间隔重复复习（FSRS-5）**、积分与平台额度、BYOK。
 
 用户的数据属于用户自己：设置页可以导出 **Markdown / Anki CSV / 完整备份 JSON**，
 账号可以一键删除；判错了有「这题判错了？」入口，上报会冻结当时的判定现场并进入人工复核队列。
@@ -283,12 +285,21 @@ Vercel，不会打印密钥原文。
 4. 门控：任意关键得分点（权重 ≥ 0.2）判定强度不足，或矛盾/编造检查自身不确定，
    整题标记**待复核**，结果页给出分数区间，并且**不计入知识点掌握度**。
 
-### 额度
+### 额度与积分
 
-- 每人每日：材料 3 份、题目 100 道、判定 1000 次（[src/lib/config.ts](src/lib/config.ts)）；
-- 按 Asia/Shanghai 自然日重置；
-- 使用自带密钥（BYOK）的调用不占平台额度；
-- 闸门在「生成试卷」与「提交判定」两个入口，超限返回 429。
+模型接入分两条路，用户在设置页二选一：
+
+- **自己的 Key（BYOK）**：调用直接走用户自己的账号，平台不扣积分、也不设上限；
+- **平台额度**：不用申请任何 Key，按 token 消耗扣积分。
+
+积分的算法是公开的、可心算的：**1 积分 = 1000 token 等值，平台价 = 官方价 × 1.5**
+（[src/lib/config.ts](src/lib/config.ts)）。注册送 300 积分（约 30 万 token 等值），
+邀请码再加 100；用完可以兑换（v1 是人工发码，见 `npm run credits:issue`）。
+余额与每一笔扣费都写在 `credit_ledger` 里，设置页能逐笔核对。
+
+除积分外还有两层次数闸门（[src/lib/config.ts](src/lib/config.ts)）：
+每人每日材料 3 份、题目 100 道、判定 1000 次、问答 200 次、图解 20 次，按 Asia/Shanghai 自然日重置。
+超限返回 429，积分不足返回 402（并给出「兑换积分 / 换成自己的 Key」两条出口）。
 
 ## 数据模型
 
@@ -296,7 +307,9 @@ Vercel，不会打印密钥原文。
 
 | 表 | 作用 |
 | --- | --- |
-| `users` / `invite_codes` | 邀请制账号，BYOK 密钥加密列 |
+| `users` / `invite_codes` | 账号（邮箱 + 模型来源）、邀请码（额度券）、BYOK 密钥加密列 |
+| `credit_ledger` / `redemption_codes` | 积分账本（append-only）与充值码 |
+| `explanations` | 一页图解的 HTML（单文件产物，删材料时级联删除） |
 | `materials` | 材料正文 + `source_map`（上传来源的页码映射，PDF 才有） |
 | `exam_blueprints` | 知识点大纲（每份材料一份，带版本） |
 | `questions` | 题目 + 答案键 + rubric 点 + 原文锚点 |

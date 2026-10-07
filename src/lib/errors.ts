@@ -56,6 +56,17 @@ export class SpendCapExceededError extends AppError {
   }
 }
 
+/**
+ * 积分不足。用 402 而不是 429：这不是「你太快了」，而是「你没有余额」，
+ * 客户端据此展示「去兑换 / 换用自己的 Key」两条出口，而不是让人等一会儿再试。
+ */
+export class InsufficientCreditsError extends AppError {
+  constructor(message: string) {
+    super(message, 402, "insufficient_credits");
+    this.name = "InsufficientCreditsError";
+  }
+}
+
 export function toErrorResponse(error: unknown): { status: number; body: { error: string; code: string } } {
   if (error instanceof AppError) {
     return { status: error.status, body: { error: error.message, code: error.code } };

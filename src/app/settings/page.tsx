@@ -1,14 +1,22 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ByokForm } from "@/components/byok-form";
+import { CreditRedeemForm } from "@/components/credit-redeem-form";
 import { DeleteAccountForm } from "@/components/delete-account-form";
+import { ModelModeForm } from "@/components/model-mode-form";
 import { QuotaCard } from "@/components/quota-card";
 import { RevokeSessionsButton } from "@/components/revoke-sessions-button";
 import { TopBar } from "@/components/top-bar";
 import { getCurrentUser } from "@/lib/auth/session";
+import { LEDGER_KIND_LABEL } from "@/lib/credits";
 import { formatMicroUsd } from "@/lib/llm/usage";
 import { checkQuota } from "@/lib/quota";
 import { readByok, summarizeByok } from "@/lib/services/byok";
+import {
+  creditBalanceLabel,
+  creditBalanceMilli,
+  creditLedger,
+} from "@/lib/services/credits";
 import { engineStatus } from "@/lib/services/status";
 import { todayLlmUsage } from "@/lib/services/usage";
 import { spendStatus } from "@/lib/services/usage";
@@ -24,6 +32,8 @@ export default async function SettingsPage() {
   const byok = summarizeByok(readByok(user));
   const usage = await todayLlmUsage(user.id);
   const spend = await spendStatus(user.id);
+  const creditsMilli = await creditBalanceMilli(user.id);
+  const ledger = await creditLedger(user.id, 10);
 
   return (
     <>
@@ -34,6 +44,60 @@ export default async function SettingsPage() {
         <section className="card">
           {/* QuotaCard 自带「今日额度」标题，这里不再重复一遍 */}
           <QuotaCard usage={quota.usage} byokActive={byok.judgeConfigured || byok.llmConfigured} />
+        </section>
+
+        <section className="card">
+          <h2>积分：{creditBalanceLabel(creditsMilli)}</h2>
+          <p className="small muted">
+            用平台额度时按 token 消耗扣积分：1 积分 = 1000 token 等值，按官方价 1.5
+            倍计费（这 0.5 包含出题、判定、材料解析、复习排期与判错复核）。
+            注册赠送 300 积分；用自己的 Key 不消耗积分。
+          </p>
+          <ModelModeForm
+            initial={user.modelMode === "byok" ? "byok" : "platform"}
+            byokConfigured={Boolean(byok.llmConfigured || byok.judgeConfigured)}
+          />
+        </section>
+
+        <section className="card">
+          <h2>兑换积分</h2>
+          <p className="small muted">
+            目前通过兑换码充值（人工发码，还没接在线支付）。兑换码只能用一次，用完即失效。
+          </p>
+          <CreditRedeemForm />
+          {ledger.length > 0 ? (
+            <>
+              <h3 style={{ marginTop: 20 }}>最近 10 笔积分变动</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>时间</th>
+                    <th>类型</th>
+                    <th>变动</th>
+                    <th>余额</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledger.map((entry) => (
+                    <tr key={entry.id}>
+                      <td className="small">
+                        {entry.createdAt.toISOString().slice(0, 16).replace("T", " ")}
+                      </td>
+                      <td className="small">
+                        {LEDGER_KIND_LABEL[entry.kind] ?? entry.kind}
+                        {entry.note ? `（${entry.note}）` : ""}
+                      </td>
+                      <td className="small">
+                        {entry.amountMilli > 0 ? "+" : ""}
+                        {creditBalanceLabel(entry.amountMilli)}
+                      </td>
+                      <td className="small">{creditBalanceLabel(entry.balanceAfterMilli)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          ) : null}
         </section>
 
         <section className="card">

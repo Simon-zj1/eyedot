@@ -9,6 +9,7 @@ const KIND_LABEL: Record<QuotaKind, string> = {
   question: "生成题目",
   judgment: "判定次数",
   ask: "材料问答",
+  explain: "图解生成",
 };
 
 export type QuotaDecision = {
@@ -127,15 +128,9 @@ export type QuotaRow = {
 };
 
 export function quotaRows(usage: UsageSnapshot): QuotaRow[] {
-  const labels: Record<QuotaKind, string> = {
-    material: "上传材料",
-    question: "生成题目",
-    judgment: "判定次数",
-    ask: "材料问答",
-  };
   return (Object.keys(QUOTA_LIMITS) as QuotaKind[]).map((kind) => ({
     kind,
-    label: labels[kind],
+    label: KIND_LABEL[kind],
     used: usage[kind],
     limit: QUOTA_LIMITS[kind],
     ratio: Math.min(1, usage[kind] / QUOTA_LIMITS[kind]),

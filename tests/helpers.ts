@@ -1,6 +1,7 @@
 import { MemoryStore } from "@/lib/db/memory";
 import { getStore, setStoreForTests } from "@/lib/db";
 import { createSessionForUser } from "@/lib/auth/session";
+import { grantSignupCredits } from "@/lib/services/credits";
 import { setDecisionEngineOverride } from "@/lib/engine";
 import { setGenerationProviderOverride } from "@/lib/generator";
 import { setChatProviderOverride, type ChatProvider, type ChatRequest, type ChatResponse } from "@/lib/llm/provider";
@@ -12,22 +13,39 @@ export function useMemoryStore(): MemoryStore {
   return store;
 }
 
+/** 给测试用户发积分：平台额度的调用现在要先过余额门槛。 */
+export async function grantCredits(userId: string, credits: number): Promise<void> {
+  await getStore().applyCreditDelta({
+    userId,
+    kind: "adjust",
+    amountMilli: Math.round(credits * 1_000),
+    ref: null,
+    note: "测试注入",
+  });
+}
+
 /**
  * 测试专用登录捷径。生产登录必须走邮箱验证码；这里只用来快速构造已登录用户，
  * 避免每个业务测试都重复跑一遍验证码流程。
+ *
+ * 注册赠送也照做：否则每个业务用例都会卡在「余额不足」，
+ * 而那个失败和用例真正要验证的东西毫无关系。
  */
 export async function loginWithInvite(email: string, inviteCode?: string) {
   const store = getStore();
   let user = await store.getUserByEmail(email);
   let created = false;
   if (!user) {
-    if (!inviteCode) throw new Error("首次使用需要邀请码");
-    const invite = await store.getInviteCode(inviteCode);
-    if (!invite) throw new Error("邀请码无效、已过期或已用完");
-    const consumed = await store.consumeInviteCode(inviteCode);
-    if (!consumed) throw new Error("邀请码无效、已过期或已用完");
+    // 注册已开放：不带邀请码也能建号，邀请码只决定要不要多加 100 积分
+    if (inviteCode) {
+      const invite = await store.getInviteCode(inviteCode);
+      if (!invite) throw new Error("邀请码无效、已过期或已用完");
+      const consumed = await store.consumeInviteCode(inviteCode);
+      if (!consumed) throw new Error("邀请码无效、已过期或已用完");
+    }
     user = await store.createUser(email);
     created = true;
+    await grantSignupCredits(user.id, { invited: Boolean(inviteCode) });
   }
   return { user, created, cookieValue: createSessionForUser(user) };
 }

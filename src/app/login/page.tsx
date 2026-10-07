@@ -14,18 +14,20 @@ export default async function LoginPage() {
       <TopBar user={null} />
       <main className="shell" style={{ maxWidth: 520, paddingTop: 40 }}>
         <div className="card">
-          <h1>邀请制登录</h1>
+          <h1>注册 / 登录</h1>
           <p className="muted small">
-            已有账号和新账号都要先获取邮箱验证码；新账号的邀请码在验证码请求时填写。
+            填邮箱获取验证码即可注册或登录，不需要密码。注册即送 300 积分体验额度
+            （约 30 万 token 等值），用完后可以兑换积分，或在设置里换成自己的模型 Key。
             登录态使用 HttpOnly 签名 Cookie，并带服务端会话版本，密钥不会下发到浏览器。
           </p>
           <LoginForm />
         </div>
         <div className="card card--flat small muted">
-          <strong>为什么需要邀请码？</strong>
+          <strong>两种用模型的方式</strong>
           <p style={{ marginTop: 8 }}>
-            出题与判定都会消耗平台成本，邀请制 + 每日额度先把预算与滥用控制住。
-            如果你在设置里填入自己的密钥（BYOK），这部分调用不占平台额度。
+            一是用平台额度（消耗积分，按官方价 1.5 倍计费，不用去申请任何 Key）；
+            二是填自己的模型 Key（BYOK），调用直接走你的账号，平台不扣积分。
+            邀请码不再是入场券，只是一个额外的额度加成。
           </p>
         </div>
       </main>

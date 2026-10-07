@@ -28,6 +28,17 @@ cd ~/.agents/skills/eyedot && npm install
 技能目录已经 `npm install` 之后，本文件里的命令用 `npx tsx scripts/study.ts <子命令>` 即可；
 如果该包已经发布到 npm，也可以直接用 `npx eyedot <子命令>`（两者等价）。
 
+## 附带的第二个 skill：一页图解
+
+[`skills/answer-me-with-html/`](skills/answer-me-with-html/SKILL.md) 把「一个知识点做成一页 HTML 图解」
+固化成本仓库的能力：重点是抽象概念给类比、流程给步骤、算法给例子，产出单文件、可离线打开。
+
+```bash
+npx eyedot explain --material notes.md --topic "注意力机制为什么需要缩放" --out explain.html
+```
+
+网页端在材料页的「一页图解」，两个入口共用同一套提示词与安全清洗。
+
 判定引擎（二选一，都不配也能跑但会退化为演示模式）：
 
 - `TYPESAFE_API_KEY`：走 Jev（推荐，逐点概率 + 置信度校准）。

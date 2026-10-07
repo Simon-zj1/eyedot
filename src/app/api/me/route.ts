@@ -5,11 +5,13 @@ import { resolveDecisionEngine } from "@/lib/engine";
 import { resolveGenerationProvider } from "@/lib/generator";
 import { checkQuota } from "@/lib/quota";
 import { readByok, summarizeByok } from "@/lib/services/byok";
+import { creditBalanceMilli } from "@/lib/services/credits";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await requireUserFromRequest(request);
-    const byok = readByok(user);
+    // 报告用户实际会走的路径：切成平台额度后，即使本地存着 Key 也不算「用 BYOK」
+    const byok = user.modelMode === "platform" ? null : readByok(user);
     const quota = await checkQuota(user.id, {});
     const engine = byok?.judge?.apiKey
       ? "byok"
@@ -21,6 +23,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       user: { id: user.id, email: user.email },
+      modelMode: user.modelMode,
+      creditsMilli: await creditBalanceMilli(user.id),
       byok: summarizeByok(byok),
       quota: { usage: quota.usage, limits: quota.limits },
       engine,

@@ -15,9 +15,9 @@ import { topicKeyOf } from "@/lib/ids";
 import { interleaveByTopic } from "@/lib/interleave";
 import { usageCollector } from "@/lib/llm/usage";
 import { consumeQuota, refundQuota } from "@/lib/quota";
-import { readByok } from "@/lib/services/byok";
+import { assertByokConfigured, byokForMode } from "@/lib/services/byok";
 import { toGeneratedQuestion, toStudentQuestion } from "@/lib/services/questions";
-import { assertWithinSpendCap, recordChatUsage } from "@/lib/services/usage";
+import { assertPlatformCallAllowed, recordChatUsage } from "@/lib/services/usage";
 
 export type DueReviewCard = {
   item: ReviewItemRecord;
@@ -221,13 +221,14 @@ export async function gradeReviewAnswer(
   const { question } = await loadOwnedQuestion(user, questionId);
   const store = getStore();
 
-  const byok = readByok(user);
+  assertByokConfigured(user);
+  const byok = byokForMode(user);
   const usage = usageCollector();
   const selection = resolveDecisionEngine({ byok, onChatUsage: usage.onChatUsage });
   const needsEngine = question.type === "short_answer" || question.type === "cloze";
   let judgmentQuotaReserved = false;
   if (selection.countsAgainstQuota && needsEngine) {
-    await assertWithinSpendCap(user.id);
+    await assertPlatformCallAllowed(user, "judge");
     await consumeQuota(user.id, { judgment: 1 });
     judgmentQuotaReserved = true;
   }
@@ -250,6 +251,7 @@ export async function gradeReviewAnswer(
       user.id,
       usage.pending,
       selection.countsAgainstQuota ? "platform" : "byok",
+      question.id,
     );
   }
   if (selection.countsAgainstQuota && !judgment.usedEngine && judgmentQuotaReserved) {

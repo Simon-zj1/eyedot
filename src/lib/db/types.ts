@@ -20,9 +20,13 @@ export type UserRecord = {
   id: string;
   email: string;
   byokEncrypted: string | null;
+  modelMode: ModelMode;
   sessionVersion: number;
   createdAt: Date;
 };
+
+/** 模型来源：平台额度（扣积分）或用户自己的 Key。 */
+export type ModelMode = "platform" | "byok";
 
 export type InviteCodeRecord = {
   code: string;
@@ -286,6 +290,51 @@ export type LlmUsageRecord = {
   costMicroUsd: number;
 };
 
+export type CreditLedgerKind = "grant" | "bonus" | "redeem" | "spend" | "adjust";
+
+export type CreditLedgerRecord = {
+  id: string;
+  userId: string;
+  kind: CreditLedgerKind;
+  /** 毫积分（1 积分 = 1000 毫积分），正数入账、负数出账 */
+  amountMilli: number;
+  balanceAfterMilli: number;
+  ref: string | null;
+  note: string | null;
+  createdAt: Date;
+};
+
+export type NewCreditLedgerEntry = Omit<
+  CreditLedgerRecord,
+  "id" | "createdAt" | "balanceAfterMilli"
+>;
+
+export type RedemptionCodeRecord = {
+  code: string;
+  creditsMilli: number;
+  maxUses: number;
+  usedCount: number;
+  expiresAt: Date | null;
+  note: string | null;
+  createdAt: Date;
+};
+
+export type NewRedemptionCode = Omit<RedemptionCodeRecord, "usedCount" | "createdAt"> & {
+  usedCount?: number;
+};
+
+export type ExplanationRecord = {
+  id: string;
+  userId: string;
+  materialId: string;
+  topic: string;
+  html: string;
+  model: string;
+  createdAt: Date;
+};
+
+export type NewExplanation = Omit<ExplanationRecord, "id" | "createdAt">;
+
 export interface Store {
   /** 在同一个数据库事务里执行一组写操作；内存实现直接串行执行。 */
   transaction<T>(fn: (tx: Store) => Promise<T>): Promise<T>;
@@ -294,8 +343,29 @@ export interface Store {
   getUser(id: string): Promise<UserRecord | null>;
   getUserByEmail(email: string): Promise<UserRecord | null>;
   setUserByok(userId: string, encrypted: string | null): Promise<void>;
+  /** 切换模型来源：平台额度 / 自己的 Key。 */
+  setUserModelMode(userId: string, mode: ModelMode): Promise<void>;
   /** 让该用户所有已签发的会话失效（会话版本 +1）。 */
   revokeUserSessions(userId: string): Promise<void>;
+
+  /** 当前积分余额（毫积分）。没有账目时返回 0。 */
+  getCreditBalance(userId: string): Promise<number>;
+  /**
+   * 记一笔积分账并返回这一笔（含记完之后的余额）。
+   * 余额由账本累加得出，所以写入必须与「读当前余额」在同一个事务里，
+   * 否则并发扣费会写出两条口径不一致的 balanceAfter。
+   */
+  applyCreditDelta(entry: NewCreditLedgerEntry): Promise<CreditLedgerRecord>;
+  listCreditLedger(userId: string, limit?: number): Promise<CreditLedgerRecord[]>;
+
+  createRedemptionCodes(inputs: NewRedemptionCode[]): Promise<RedemptionCodeRecord[]>;
+  getRedemptionCode(code: string): Promise<RedemptionCodeRecord | null>;
+  /** 原子占用一次兑换码名额；已用完或过期返回 false。 */
+  consumeRedemptionCode(code: string): Promise<boolean>;
+
+  createExplanation(input: NewExplanation): Promise<ExplanationRecord>;
+  getExplanation(id: string): Promise<ExplanationRecord | null>;
+  listExplanationsByMaterial(materialId: string): Promise<ExplanationRecord[]>;
 
   upsertInviteCode(code: string, maxUses: number, expiresAt?: Date | null): Promise<InviteCodeRecord>;
   getInviteCode(code: string): Promise<InviteCodeRecord | null>;

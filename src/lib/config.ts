@@ -61,7 +61,45 @@ export const QUOTA_LIMITS = {
   question: 100,
   judgment: 1000,
   ask: 200,
+  explain: 20,
 } as const;
+
+/**
+ * 平台价 = 上游成本 × 该倍数。
+ *
+ * 多出来的不是「转发费」：一次出题要跑材料切分、校验重试、溯源校验，一次判定要拆点、
+ * 加权、跑矛盾/编造检测，再加上存储、复习排期与判错复核。倍数写成配置而不是散在代码里，
+ * 因为它是商业参数，不是实现细节。
+ */
+export const PLATFORM_MARKUP = 1.5;
+
+/**
+ * 积分的定价锚点：1 积分 = 1000 token 等值。
+ *
+ * 按 deepseek-flash 的输入价（$0.3 / 百万）折算，也就是 1 积分 ≈ $0.0003。
+ * 选它当锚点是为了让人能算：30 万 token 等值 = 300 积分，用户一眼能对上自己的用量。
+ */
+export const CREDIT_USD_VALUE = 0.0003;
+
+/** 注册赠送的积分（30 万 token 等值）。 */
+export const SIGNUP_CREDIT_GRANT = 300;
+
+/** 用邀请码注册的额外赠送；邀请码从「入场券」变成「额度券」。 */
+export const INVITE_BONUS_CREDITS = 100;
+
+/**
+ * 开始一次平台调用所需的最低余额（积分）。
+ *
+ * 不做预扣，所以「余额 1 积分也能发起一次 69 积分的出题」是可能的；这是有意保留的取舍
+ * （精确到分要预扣 + 回滚，复杂度大于收益）。门槛把单次透支控制在一次操作以内。
+ */
+export const MIN_CREDITS_TO_START = {
+  generate: 40,
+  judge: 3,
+  ask: 2,
+} as const;
+
+export type PlatformCallKind = keyof typeof MIN_CREDITS_TO_START;
 
 export type QuotaKind = keyof typeof QUOTA_LIMITS;
 

@@ -1,6 +1,6 @@
 {
   "name": "eyedot",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "type": "module",
   "description": "把上传的学习材料变成可自动判分的自助考试：出题交给 LLM，判定交给可替换的判定引擎（默认通用大模型，可切到 TypeSafe Jev 决策模型），报告与覆盖率可逐条核对。",
   "license": "MIT",
@@ -69,6 +69,7 @@
     "mcp": "tsx scripts/mcp-server.ts",
     "demo:report": "tsx scripts/study.ts demo --out docs/demo",
     "brand:icons": "node scripts/render-brand-icons.mjs",
+    "credits:issue": "tsx scripts/issue-credits.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",

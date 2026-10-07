@@ -16,6 +16,8 @@ import { createInterface } from "node:readline";
 import { resolve } from "node:path";
 import { readFile } from "node:fs/promises";
 import { coverageSummary, verifyCoverage } from "@/lib/coverage";
+import { MAX_MATERIAL_CHARS } from "@/lib/config";
+import { buildExplainUserPrompt, EXPLAIN_SYSTEM_PROMPT } from "@/lib/explain/prompt";
 import { resolveDecisionEngine } from "@/lib/engine";
 import { LexicalJudgeEngine } from "@/lib/engine/lexical";
 import { LLMJudgeEngine } from "@/lib/engine/llm-judge";
@@ -26,6 +28,7 @@ import { resolvePlatformChatProvider } from "@/lib/llm/provider";
 import { verifyProvenance } from "@/lib/provenance";
 import { buildStudyReport, renderReportHtml, type StudyReport } from "@/lib/report";
 import { scanMaterial, summarizeHazards } from "@/lib/security/untrusted";
+import { sanitizeExplainerHtml } from "@/lib/security/html-sandbox";
 import type { DecisionEngine, GeneratedQuestion, Topic } from "@/lib/types";
 
 const SERVER_INFO = { name: "eyedot", version: "0.3.0" };
@@ -100,6 +103,21 @@ const TOOLS: Tool[] = [
     name: "render_report",
     description: "把 grade_answers 返回的 report 渲染成离线单文件 HTML（无外部请求）。",
     inputSchema: { type: "object", properties: { report: { type: "object" } }, required: ["report"] },
+  },
+  {
+    name: "explain_page",
+    description:
+      "把一个知识点做成单文件 HTML 图解（抽象概念给类比、流程给步骤、算法给例子）。返回的 HTML 已做安全清洗，可直接写文件或用 sandbox iframe 展示。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        materialText: { type: "string", description: "材料全文（与 materialPath 二选一）" },
+        materialPath: { type: "string", description: "材料文件路径（与 materialText 二选一）" },
+        topic: { type: "string", description: "要讲解的知识点" },
+        title: { type: "string", description: "材料标题，仅用于提示词" },
+      },
+      required: ["topic"],
+    },
   },
 ];
 
@@ -178,6 +196,38 @@ function payloadOf(value: unknown): AnswerPayload | null {
 
 async function callTool(name: string, args: Record<string, unknown>): Promise<string> {
   switch (name) {
+    case "explain_page": {
+      const material = await readText(args);
+      const topic = String(args.topic ?? "").trim();
+      if (!topic) throw new Error("需要 topic");
+      const provider = resolvePlatformChatProvider();
+      if (!provider) {
+        throw new Error("没有可用的模型：设置 PLATFORM_LLM_API_KEY（或 TYPESAFE_API_KEY）后重试。");
+      }
+      const scanned = scanMaterial(material, { maxChars: MAX_MATERIAL_CHARS });
+      const response = await provider.complete({
+        system: EXPLAIN_SYSTEM_PROMPT,
+        user: buildExplainUserPrompt({
+          materialTitle: typeof args.title === "string" ? args.title : "材料",
+          topic,
+          materialExcerpt: scanned.promptText,
+        }),
+        temperature: 0.3,
+        maxTokens: 6000,
+      });
+      const { html, removed } = sanitizeExplainerHtml(response.text);
+      return JSON.stringify(
+        {
+          topic,
+          model: response.model,
+          sanitized: removed,
+          materialHazards: summarizeHazards(scanned.hazards),
+          html,
+        },
+        null,
+        2,
+      );
+    }
     case "verify_exam": {
       const material = await readText(args);
       const exam = parseExam(args.exam);

@@ -31,12 +31,16 @@ export default async function HomePage() {
             </p>
             <div className="hero__actions">
               <Link className="btn btn--primary" href="/login">
-                用邀请码登录
+                免费注册（送 300 积分）
               </Link>
               <a className="btn btn--quiet" href="/demo/eyedot-report.html">
                 先看一份示例报告
               </a>
             </div>
+            <p className="small muted" style={{ marginTop: "var(--s3)", marginBottom: 0 }}>
+              填邮箱收验证码即可注册，不需要密码。用平台额度按 token 扣积分（官方价 1.5 倍），
+              也可以填自己的模型 Key，那样不消耗积分。
+            </p>
             {status.demoMode ? (
               <p className="small muted" style={{ marginTop: "var(--s4)", marginBottom: 0 }}>
                 当前实例未配置模型，使用内置演示模式；登录后可在设置里换成自己的模型 Key。

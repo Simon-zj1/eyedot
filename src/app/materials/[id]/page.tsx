@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { AskPanel } from "@/components/ask-panel";
 import { ExamBuilder } from "@/components/exam-builder";
+import { ExplainPanel } from "@/components/explain-panel";
 import { GenerateOutlineButton } from "@/components/generate-outline-button";
 import { TopBar } from "@/components/top-bar";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -13,6 +14,7 @@ import {
 } from "@/lib/config";
 import { NotFoundError } from "@/lib/errors";
 import { getBlueprintForMaterial } from "@/lib/services/generation";
+import { listExplanations } from "@/lib/services/explain";
 import { getMaterialForUser } from "@/lib/services/materials";
 import { listExamSummaries } from "@/lib/services/results";
 import { scanMaterial, summarizeHazards } from "@/lib/security/untrusted";
@@ -40,6 +42,9 @@ export default async function MaterialDetailPage({
   const blueprint = await getBlueprintForMaterial(material).catch(() => null);
   const exams = (await listExamSummaries(user)).filter((summary) => summary.exam.materialId === id);
   const scan = scanMaterial(material.rawText);
+  const explanations = await listExplanations(user, material.id);
+  // 知识点来自大纲；还没生成大纲时留空，用户可以自己输入
+  const explainTopics = blueprint?.topics.map((entry) => entry.title) ?? [];
 
   return (
     <>
@@ -123,6 +128,23 @@ export default async function MaterialDetailPage({
         ) : null}
 
         <AskPanel materialId={material.id} />
+
+        <section className="card">
+          <h2>一页图解</h2>
+          <p className="small muted">
+            把材料里的一个知识点做成一页 HTML：抽象概念给类比、流程给步骤、算法给具体例子，
+            产物是单文件，可以离线保存。它由模型生成，材料里没有的内容会标成「补充」。
+          </p>
+          <ExplainPanel
+            materialId={material.id}
+            topics={explainTopics}
+            initial={explanations.map((record) => ({
+              id: record.id,
+              topic: record.topic,
+              model: record.model,
+            }))}
+          />
+        </section>
 
         {!blueprint ? (
           <section className="card">

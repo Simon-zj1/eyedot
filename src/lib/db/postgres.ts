@@ -8,6 +8,8 @@ import type {
   AnswerRecord,
   AttemptRecord,
   BlueprintRecord,
+  CreditLedgerRecord,
+  ExplanationRecord,
   ExamRecord,
   FeedbackRecord,
   InviteCodeRecord,
@@ -19,17 +21,22 @@ import type {
   MasteryRecord,
   MaterialRecord,
   MistakeRecord,
+  ModelMode,
   NewBlueprint,
+  NewCreditLedgerEntry,
   NewExam,
+  NewExplanation,
   NewFeedback,
   NewJudgment,
   NewLoginChallenge,
   NewMaterial,
   NewMistake,
   NewQuestion,
+  NewRedemptionCode,
   NewReviewItem,
   NewReviewLog,
   QuestionRecord,
+  RedemptionCodeRecord,
   ReviewItemRecord,
   ReviewLogRecord,
   Store,
@@ -67,6 +74,9 @@ export class PostgresStore implements Store {
   async reset(): Promise<void> {
     await this.db.delete(schema.feedbackReports);
     await this.db.delete(schema.llmUsage);
+    await this.db.delete(schema.explanations);
+    await this.db.delete(schema.creditLedger);
+    await this.db.delete(schema.redemptionCodes);
     await this.db.delete(schema.reviewLogs);
     await this.db.delete(schema.reviewItems);
     await this.db.delete(schema.usageCounters);
@@ -119,6 +129,138 @@ export class PostgresStore implements Store {
       .update(schema.users)
       .set({ byokEncrypted: encrypted })
       .where(eq(schema.users.id, userId));
+  }
+
+  async setUserModelMode(userId: string, mode: ModelMode): Promise<void> {
+    await this.db
+      .update(schema.users)
+      .set({ modelMode: mode })
+      .where(eq(schema.users.id, userId));
+  }
+
+  async getCreditBalance(userId: string): Promise<number> {
+    const rows = await this.db
+      .select({ balance: sql<number>`coalesce(sum(${schema.creditLedger.amountMilli}), 0)` })
+      .from(schema.creditLedger)
+      .where(eq(schema.creditLedger.userId, userId));
+    return Number(rows[0]?.balance ?? 0);
+  }
+
+  async applyCreditDelta(entry: NewCreditLedgerEntry): Promise<CreditLedgerRecord> {
+    return this.db.transaction(async (tx) => {
+      // 锁住用户行：两个并发请求否则可能读到同一个余额，写出两条互相矛盾的 balanceAfter
+      await tx
+        .select({ id: schema.users.id })
+        .from(schema.users)
+        .where(eq(schema.users.id, entry.userId))
+        .for("update");
+      const balanceRows = await tx
+        .select({ balance: sql<string>`coalesce(sum(${schema.creditLedger.amountMilli}), 0)` })
+        .from(schema.creditLedger)
+        .where(eq(schema.creditLedger.userId, entry.userId));
+      const balance = Number(balanceRows[0]?.balance ?? 0);
+      const rows = await tx
+        .insert(schema.creditLedger)
+        .values({
+          id: createId("crl"),
+          userId: entry.userId,
+          kind: entry.kind,
+          amountMilli: entry.amountMilli,
+          balanceAfterMilli: balance + entry.amountMilli,
+          ref: entry.ref,
+          note: entry.note,
+        })
+        .returning();
+      return rows[0] as CreditLedgerRecord;
+    });
+  }
+
+  async listCreditLedger(userId: string, limit = 20): Promise<CreditLedgerRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(schema.creditLedger)
+      .where(eq(schema.creditLedger.userId, userId))
+      .orderBy(desc(schema.creditLedger.createdAt))
+      .limit(limit);
+    return rows as CreditLedgerRecord[];
+  }
+
+  async createRedemptionCodes(inputs: NewRedemptionCode[]): Promise<RedemptionCodeRecord[]> {
+    if (inputs.length === 0) return [];
+    const rows = await this.db
+      .insert(schema.redemptionCodes)
+      .values(
+        inputs.map((input) => ({
+          code: input.code,
+          creditsMilli: input.creditsMilli,
+          maxUses: input.maxUses,
+          usedCount: input.usedCount ?? 0,
+          expiresAt: input.expiresAt,
+          note: input.note,
+        })),
+      )
+      .returning();
+    return rows as RedemptionCodeRecord[];
+  }
+
+  async getRedemptionCode(code: string): Promise<RedemptionCodeRecord | null> {
+    const rows = await this.db
+      .select()
+      .from(schema.redemptionCodes)
+      .where(eq(schema.redemptionCodes.code, code.trim().toUpperCase()))
+      .limit(1);
+    return (rows[0] as RedemptionCodeRecord | undefined) ?? null;
+  }
+
+  async consumeRedemptionCode(code: string): Promise<boolean> {
+    const rows = await this.db
+      .update(schema.redemptionCodes)
+      .set({ usedCount: sql`${schema.redemptionCodes.usedCount} + 1` })
+      .where(
+        and(
+          eq(schema.redemptionCodes.code, code.trim().toUpperCase()),
+          lt(schema.redemptionCodes.usedCount, schema.redemptionCodes.maxUses),
+          or(
+            isNull(schema.redemptionCodes.expiresAt),
+            gt(schema.redemptionCodes.expiresAt, new Date()),
+          ),
+        ),
+      )
+      .returning({ code: schema.redemptionCodes.code });
+    return rows.length > 0;
+  }
+
+  async createExplanation(input: NewExplanation): Promise<ExplanationRecord> {
+    const rows = await this.db
+      .insert(schema.explanations)
+      .values({
+        id: createId("exp"),
+        userId: input.userId,
+        materialId: input.materialId,
+        topic: input.topic,
+        html: input.html,
+        model: input.model,
+      })
+      .returning();
+    return rows[0] as ExplanationRecord;
+  }
+
+  async getExplanation(id: string): Promise<ExplanationRecord | null> {
+    const rows = await this.db
+      .select()
+      .from(schema.explanations)
+      .where(eq(schema.explanations.id, id))
+      .limit(1);
+    return (rows[0] as ExplanationRecord | undefined) ?? null;
+  }
+
+  async listExplanationsByMaterial(materialId: string): Promise<ExplanationRecord[]> {
+    const rows = await this.db
+      .select()
+      .from(schema.explanations)
+      .where(eq(schema.explanations.materialId, materialId))
+      .orderBy(desc(schema.explanations.createdAt));
+    return rows as ExplanationRecord[];
   }
 
   async revokeUserSessions(userId: string): Promise<void> {

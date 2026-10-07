@@ -99,3 +99,46 @@ MVP 先不引入 Sentry。所有可预期错误都转成 `AppError` 的中文 `c
 - 需要按用户隔离地恢复单份数据（开启 Neon PITR）；
 - 需要跨实例限流（把进程内限流换成 Upstash/Vercel WAF）；
 - 需要撤回单台设备会话（引入数据库会话表或 Supabase Auth）。
+
+## 7. 积分运营（v1：人工发码）
+
+定价只有三个数，都在 `src/lib/config.ts`：
+
+| 参数 | 值 | 含义 |
+| --- | --- | --- |
+| `CREDIT_USD_VALUE` | 0.0003 | 1 积分 ≈ $0.0003，也就是「1 积分 = 1000 token 等值」 |
+| `PLATFORM_MARKUP` | 1.5 | 平台价 = 上游成本 × 1.5 |
+| `SIGNUP_CREDIT_GRANT` | 300 | 注册赠送（约 30 万 token 等值） |
+
+### 发码
+
+```bash
+npm run credits:issue -- --credits 3000 --count 20 --note "首批体验码"
+# 面额 3000 积分 ≈ 300 万 token 等值，够出十几份卷子
+```
+
+码只打印一次（数据库里存的是明文，发码要靠它），不要在聊天记录或工单里留档。
+用户转账后把码发过去，他在「设置 → 兑换积分」里输码即可到账。
+
+### 每天看什么
+
+```bash
+# 平台当天烧了多少（估算）——超过日预算会自动熔断，用户仍可用自己的 Key
+psql "$DATABASE_URL" -c "select model, origin, calls, cost_micro_usd from llm_usage where day = to_char(now() at time zone 'Asia/Shanghai','YYYY-MM-DD') order by cost_micro_usd desc limit 10;"
+
+# 账本抽查：余额应等于最后一笔的 balance_after
+psql "$DATABASE_URL" -c "select user_id, sum(amount_milli) as balance, max(balance_after_milli) filter (where created_at = (select max(created_at) from credit_ledger c2 where c2.user_id = credit_ledger.user_id)) as last_after from credit_ledger group by user_id limit 20;"
+```
+
+### 为什么不做「给每个用户发一把上游 Key」
+
+上游 Key 是**账户凭证**，不是额度：用户拿到它就能在自己的脚本里随便花，账单仍然记在我们头上；
+邮件里还多了一次明文凭证的暴露面。真正的隔离层只能是我们自己的账本——
+用户拿不到 Key，才谈得上「余额用完就停」。这条路以后如果有上游支持「按 Key 的预算 + 模型白名单」，
+可以再加，但 Key 仍然只该躺在数据库里，不该进用户的邮箱。
+
+### 退积分与纠错
+
+判错了、扣费有疑问：先用 `credit_ledger` 定位那一笔（`ref` 指向 attempt / material），
+确认是平台侧问题后手工补一笔 `adjust`（正数入账）。**不要直接改账本历史**——
+账本是 append-only，改历史会让「余额怎么来的」无法复算。

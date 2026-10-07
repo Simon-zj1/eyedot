@@ -9,8 +9,20 @@ import {
   verifySessionToken,
 } from "@/lib/crypto";
 import { bootstrapStore, getStore } from "@/lib/db";
+import { env } from "@/lib/env";
 import type { UserRecord } from "@/lib/db/types";
 import { AppError, UnauthorizedError, ValidationError } from "@/lib/errors";
+import { grantSignupCredits } from "@/lib/services/credits";
+
+/**
+ * 注册模式：open = 邮箱验证通过即可注册（默认）；invite = 仍要邀请码。
+ *
+ * 留这个开关是因为「开放注册」和「平台额度」叠在一起就是一台撒钱的机器：
+ * 万一被刷，改环境变量就能立刻关闸，不需要回滚代码。
+ */
+export function registrationMode(): "open" | "invite" {
+  return env("REGISTRATION_MODE")?.toLowerCase() === "invite" ? "invite" : "open";
+}
 
 export const SESSION_COOKIE = "eyedot_session";
 /**
@@ -101,8 +113,9 @@ export function createSessionForUser(user: UserRecord): string {
 /**
  * 第一步：请求登录验证码。
  *
- * 已有用户也需要邮箱验证码；新用户还必须在请求时提供邀请码，
- * 但邀请码要到验证码校验成功后才真正消费，避免“请求了但没登录”白白浪费。
+ * 已有用户也需要邮箱验证码。新用户在 open 模式下直接放行，
+ * 邀请码变成「可选，填了多送积分」；invite 模式下才必须提供。
+ * 无论哪种模式，邀请码都要等到验证码校验成功后才真正消费，避免「请求了但没登录」白白浪费。
  */
 export async function requestLoginCode(
   email: string,
@@ -115,12 +128,14 @@ export async function requestLoginCode(
 
   const existing = await store.getUserByEmail(normalized);
   const normalizedInvite = inviteCode?.trim().toUpperCase() ?? null;
-  if (!existing) {
-    if (!normalizedInvite) throw new ValidationError("首次使用需要邀请码");
+  if (!existing && normalizedInvite) {
     const invite = await store.getInviteCode(normalizedInvite);
     if (!invite || invite.usedCount >= invite.maxUses || (invite.expiresAt && invite.expiresAt < new Date())) {
       throw new AppError("邀请码无效、已过期或已用完", 403, "invite_invalid");
     }
+  }
+  if (!existing && !normalizedInvite && registrationMode() === "invite") {
+    throw new ValidationError("当前是邀请制，首次使用需要邀请码");
   }
 
   const code = generateLoginCode();
@@ -174,16 +189,24 @@ export async function loginWithCode(email: string, code: string): Promise<LoginR
   let user = await store.getUserByEmail(normalized);
   let created = false;
   if (!user) {
-    if (!challenge.inviteCode) {
+    if (!challenge.inviteCode && registrationMode() === "invite") {
       throw new AppError("首次登录缺少邀请码，请重新获取验证码", 403, "invite_invalid");
     }
-    const inviteConsumed = await store.consumeInviteCode(challenge.inviteCode);
-    if (!inviteConsumed) {
-      throw new AppError("邀请码无效、已过期或已用完", 403, "invite_invalid");
+    if (challenge.inviteCode) {
+      const inviteConsumed = await store.consumeInviteCode(challenge.inviteCode);
+      if (!inviteConsumed) {
+        throw new AppError("邀请码无效、已过期或已用完", 403, "invite_invalid");
+      }
     }
     user = await store.createUser(normalized);
     created = true;
   }
+
+  // 赠送注册额度。函数本身是幂等的（已有 grant 记录就跳过），
+  // 所以「建号成功但发额度失败」的用户下次登录还能补上，不会凭空少一笔。
+  await grantSignupCredits(user.id, {
+    invited: created && Boolean(challenge.inviteCode),
+  });
 
   return { user, created, cookieValue: createSessionForUser(user) };
 }

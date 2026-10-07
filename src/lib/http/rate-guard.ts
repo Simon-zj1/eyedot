@@ -15,6 +15,8 @@ export const RATE_RULES = {
   /** 判定与问答：次数多但单次便宜 */
   judge: { limit: 90, windowMs: 60_000 },
   ask: { limit: 30, windowMs: 60_000 },
+  /** 兑换码：面额大、可被暴力猜，限得比登录更紧 */
+  redeem: { limit: 8, windowMs: 60_000 },
 } satisfies Record<string, RateLimitRule>;
 
 export function rateLimitResponse(
