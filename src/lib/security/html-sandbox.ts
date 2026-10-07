@@ -21,8 +21,13 @@ const BLOCKED_PAIRED = [
   "template",
 ];
 
-/** 自闭合或单标签，直接删标签本身。 */
-const BLOCKED_VOID = ["link", "meta", "base", "embed", "iframe", "object"];
+/**
+ * 自闭合或单标签，直接删标签本身。
+ *
+ * 注意 meta 不在这里：渲染器自己要输出 `<meta charset>` 与 viewport，
+ * 全删会把页面的编码和移动端缩放一起删掉。只删 http-equiv 那一类（跳转/刷新），见下面。
+ */
+const BLOCKED_VOID = ["link", "base", "embed", "iframe", "object"];
 
 export type SanitizeReport = {
   html: string;
@@ -52,6 +57,11 @@ export function sanitizeExplainerHtml(raw: string): SanitizeReport {
     if (pattern.test(html)) removed.push(tag);
     html = html.replace(pattern, "");
   }
+
+  // http-equiv 类 meta（refresh / 跳转）能改页面行为，删掉；charset 与 viewport 保留
+  const metaRefresh = /<meta\b[^>]*http-equiv[^>]*>/gi;
+  if (metaRefresh.test(html)) removed.push("http-equiv");
+  html = html.replace(metaRefresh, "");
 
   // 事件处理器（onclick 之类）
   const eventPattern = /\son[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi;

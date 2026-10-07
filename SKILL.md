@@ -37,7 +37,9 @@ cd ~/.agents/skills/eyedot && npm install
 npx eyedot explain --material notes.md --topic "注意力机制为什么需要缩放" --out explain.html
 ```
 
-网页端在材料页的「一页图解」，两个入口共用同一套提示词与安全清洗。
+网页端在材料页的「一页图解」，两个入口共用同一套提示词、内容契约与安全清洗。
+命令会同时写下 `explain.html` 与 `explain.json`（内容 JSON）——版式要改、要导 Markdown、
+要复查出处都靠后者，不用再花钱生成一次。
 
 判定引擎（二选一，都不配也能跑但会退化为演示模式）：
 

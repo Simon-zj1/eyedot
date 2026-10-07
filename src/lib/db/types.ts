@@ -1,4 +1,5 @@
 import type { QuotaKind, QuestionType } from "@/lib/config";
+import type { ExplainDoc } from "@/lib/explain/schema";
 import type { AnswerPayload } from "@/lib/grading";
 import type { SourceMap } from "@/lib/ingest/types";
 import type {
@@ -328,6 +329,10 @@ export type ExplanationRecord = {
   userId: string;
   materialId: string;
   topic: string;
+  /** 渲染前的内容 JSON（这条链路之前的数据可能为 null） */
+  doc: ExplainDoc | null;
+  /** 生成时的材料内容指纹 */
+  materialHash: string | null;
   html: string;
   model: string;
   createdAt: Date;

@@ -2,7 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireUserFromRequest } from "@/lib/auth/request";
 import { toErrorResponse, ValidationError } from "@/lib/errors";
 import { rateLimitResponse } from "@/lib/http/rate-guard";
-import { createExplanation, listExplanations } from "@/lib/services/explain";
+import {
+  createExplanation,
+  isExplanationStale,
+  listExplanations,
+} from "@/lib/services/explain";
+import { getMaterialForUser } from "@/lib/services/materials";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -31,6 +36,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         model: result.explanation.model,
       },
       sanitized: result.sanitize.removed,
+      ungroundedPanels: result.ungrounded,
       mode: result.mode,
     });
   } catch (error) {
@@ -43,6 +49,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   try {
     const user = await requireUserFromRequest(request);
     const { id } = await context.params;
+    const material = await getMaterialForUser(user, id);
     const explanations = await listExplanations(user, id);
     return NextResponse.json({
       explanations: explanations.map((record) => ({
@@ -50,6 +57,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         topic: record.topic,
         model: record.model,
         createdAt: record.createdAt,
+        materialVersion: record.materialHash?.slice(0, 8) ?? null,
+        stale: isExplanationStale(record, material),
       })),
     });
   } catch (error) {

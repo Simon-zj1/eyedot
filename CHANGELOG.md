@@ -1,5 +1,39 @@
 # 更新日志
 
+## v0.15.0 · 2026-10-08
+
+### 一页图解改成「内容 JSON + 渲染器」
+
+参照 `learn-from-materials` 的两阶段契约（模型只产内容、脚本只负责渲染），把图解链路重做：
+
+- 模型不再写 HTML，只返回符合 [`src/lib/explain/schema.ts`](src/lib/explain/schema.ts) 的内容 JSON
+  （面板 kind：prose / steps / flow / compare / code / callout）。
+  HTML 由 [`src/lib/explain/render.ts`](src/lib/explain/render.ts) 生成，单文件自包含。
+- 换来的是确定性：正文 ≥16px、不固定宽度、不横向滚动、深浅色与打印都是代码保证；内容里的
+  标签只会变成字面量（全部过 `escapeHtml`），不再依赖模型自觉。
+- 契约不合就重试一次，并把重试的成本一起记账；两次都不合则明确报错并退还额度。
+- 落库多了 `doc`（内容 JSON）与 `material_hash`（材料指纹）：版式改版、导 Markdown、
+  对账「这份图解基于哪一版材料」都不需要重新生成。旧数据 `doc` 为空，仍能正常阅读。
+- 命令行 `eyedot explain` 与 MCP 工具 `explain_page` 走同一条链路，并同时产出 `explain.json`。
+
+### 引文落地校验（第二遍复核）
+
+- 面板上标了「来自材料」的句子必须能在材料里**逐字定位**（忽略空白差异）；
+  定位不到就**降级**为「模型补充」并在页脚写明，而不是让读者以为它有出处。
+- 材料版本指纹写入产物，`isExplanationStale()` 已就位（现在材料不可编辑，所以恒为 false；
+  等编辑入口上线即可生效，不需要再改表）。
+
+### 规则与文档
+
+- `AGENTS.md` 增加硬约束：讲解类产物必须走内容 JSON + 渲染器，禁止模型直接写 HTML。
+- `docs/architecture.md` 把这条契约与出题链路并列记录。
+
+### 测试
+
+- 新增 `tests/unit/explain-render.test.ts`（转义、自包含、移动端/深色、页脚、契约解析、
+  引文校验）、`tests/integration/explain.test.ts`（落库三件套、重试与退款、伪造出处降级、
+  BYOK 不扣积分、版本过期判定）。共 218 个用例。
+
 ## v0.14.0 · 2026-10-08
 
 ### 开放注册

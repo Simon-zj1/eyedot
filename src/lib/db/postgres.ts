@@ -238,6 +238,8 @@ export class PostgresStore implements Store {
         userId: input.userId,
         materialId: input.materialId,
         topic: input.topic,
+        doc: input.doc,
+        materialHash: input.materialHash,
         html: input.html,
         model: input.model,
       })

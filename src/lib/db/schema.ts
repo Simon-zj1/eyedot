@@ -13,6 +13,7 @@ import {
 } from "drizzle-orm/pg-core";
 import type { AnswerPayload } from "@/lib/grading";
 import type { ExamConfigRecord, FeedbackSnapshot } from "@/lib/db/types";
+import type { ExplainDoc } from "@/lib/explain/schema";
 import type { SourceMap } from "@/lib/ingest/types";
 import type {
   AnswerKey,
@@ -419,6 +420,10 @@ export const explanations = pgTable(
       .notNull()
       .references(() => materials.id, { onDelete: "cascade" }),
     topic: text("topic").notNull(),
+    /** 渲染前的**内容 JSON**：HTML 只是它的一种渲染结果，留着它才能改版式、导 Markdown */
+    doc: jsonb("doc").$type<ExplainDoc | null>(),
+    /** 生成时的材料内容指纹：产物要能说清自己是基于哪一版材料生成的 */
+    materialHash: text("material_hash"),
     html: text("html").notNull(),
     model: text("model").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

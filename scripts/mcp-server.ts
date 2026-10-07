@@ -8,16 +8,21 @@
  *   - answer_template  生成作答骨架
  *   - grade_answers    用判定引擎判分并产出报告
  *   - render_report    把报告渲染成离线单文件 HTML
+ *   - explain_page     把知识点做成一页可离线打开的 HTML 图解
  *
  * 注册方式（客户端配置里）：
  *   { "mcpServers": { "eyedot": { "command": "npx", "args": ["-y", "eyedot@latest", "mcp"] } } }
  */
 import { createInterface } from "node:readline";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { readFile } from "node:fs/promises";
 import { coverageSummary, verifyCoverage } from "@/lib/coverage";
 import { MAX_MATERIAL_CHARS } from "@/lib/config";
-import { buildExplainUserPrompt, EXPLAIN_SYSTEM_PROMPT } from "@/lib/explain/prompt";
+import { generateExplainDoc } from "@/lib/explain/generate";
+import { verifyExplainGrounding } from "@/lib/explain/grounding";
+import { renderExplainerHtml } from "@/lib/explain/render";
 import { resolveDecisionEngine } from "@/lib/engine";
 import { LexicalJudgeEngine } from "@/lib/engine/lexical";
 import { LLMJudgeEngine } from "@/lib/engine/llm-judge";
@@ -31,7 +36,12 @@ import { scanMaterial, summarizeHazards } from "@/lib/security/untrusted";
 import { sanitizeExplainerHtml } from "@/lib/security/html-sandbox";
 import type { DecisionEngine, GeneratedQuestion, Topic } from "@/lib/types";
 
-const SERVER_INFO = { name: "eyedot", version: "0.3.0" };
+// 版本号从 package.json 读，避免这里的手写值随发版漂移（此前停在 0.3.0）。
+const pkg = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as { version: string };
+
+const SERVER_INFO = { name: "eyedot", version: pkg.version };
 const PROTOCOL_VERSION = "2024-11-05";
 
 type JsonRpcRequest = {
@@ -205,21 +215,27 @@ async function callTool(name: string, args: Record<string, unknown>): Promise<st
         throw new Error("没有可用的模型：设置 PLATFORM_LLM_API_KEY（或 TYPESAFE_API_KEY）后重试。");
       }
       const scanned = scanMaterial(material, { maxChars: MAX_MATERIAL_CHARS });
-      const response = await provider.complete({
-        system: EXPLAIN_SYSTEM_PROMPT,
-        user: buildExplainUserPrompt({
-          materialTitle: typeof args.title === "string" ? args.title : "材料",
-          topic,
-          materialExcerpt: scanned.promptText,
-        }),
-        temperature: 0.3,
-        maxTokens: 6000,
+      const title = typeof args.title === "string" ? args.title : "材料";
+      const generated = await generateExplainDoc(provider, {
+        materialTitle: title,
+        topic,
+        materialExcerpt: scanned.promptText,
       });
-      const { html, removed } = sanitizeExplainerHtml(response.text);
+      const grounding = verifyExplainGrounding(generated.doc, material);
+      const rendered = renderExplainerHtml(grounding.doc, {
+        materialTitle: title,
+        materialHash: createHash("sha256").update(material).digest("hex"),
+        model: generated.model,
+        generatedAt: new Date(),
+        ungroundedCount: grounding.ungrounded.length,
+      });
+      const { html, removed } = sanitizeExplainerHtml(rendered);
       return JSON.stringify(
         {
           topic,
-          model: response.model,
+          model: generated.model,
+          doc: grounding.doc,
+          ungroundedPanels: grounding.ungrounded,
           sanitized: removed,
           materialHazards: summarizeHazards(scanned.hazards),
           html,

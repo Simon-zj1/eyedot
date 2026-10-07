@@ -15,10 +15,13 @@
  *   tsx scripts/study.ts extract --file 材料.pdf --out material.md
  */
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { MAX_MATERIAL_CHARS } from "@/lib/config";
 import { verifyCoverage, coverageSummary } from "@/lib/coverage";
-import { buildExplainUserPrompt, EXPLAIN_SYSTEM_PROMPT } from "@/lib/explain/prompt";
+import { generateExplainDoc } from "@/lib/explain/generate";
+import { verifyExplainGrounding } from "@/lib/explain/grounding";
+import { renderExplainerHtml } from "@/lib/explain/render";
 import { resolveDecisionEngine } from "@/lib/engine";
 import { LexicalJudgeEngine } from "@/lib/engine/lexical";
 import { LLMJudgeEngine } from "@/lib/engine/llm-judge";
@@ -274,23 +277,35 @@ async function commandExplain(flags: Parsed): Promise<void> {
 
   const rawText = await readText(materialPath);
   const scanned = scanMaterial(rawText, { maxChars: MAX_MATERIAL_CHARS });
-  const response = await provider.complete({
-    system: EXPLAIN_SYSTEM_PROMPT,
-    user: buildExplainUserPrompt({
-      materialTitle: materialPath.split("/").pop() ?? materialPath,
-      topic,
-      materialExcerpt: scanned.promptText,
-    }),
-    temperature: 0.3,
-    maxTokens: 6000,
+  const title = materialPath.split("/").pop() ?? materialPath;
+  const generated = await generateExplainDoc(provider, {
+    materialTitle: title,
+    topic,
+    materialExcerpt: scanned.promptText,
   });
 
-  const { html, removed } = sanitizeExplainerHtml(response.text);
+  // 引文必须能在材料里逐字定位，否则降级成「模型补充」而不是让读者以为它有出处
+  const grounding = verifyExplainGrounding(generated.doc, rawText);
+  const rendered = renderExplainerHtml(grounding.doc, {
+    materialTitle: title,
+    materialHash: createHash("sha256").update(rawText).digest("hex"),
+    model: generated.model,
+    generatedAt: new Date(),
+    ungroundedCount: grounding.ungrounded.length,
+  });
+  const { html, removed } = sanitizeExplainerHtml(rendered);
   if (!html.trim()) fail("模型没有产出可用的 HTML，请换个知识点再试。");
 
   const outPath = typeof flags.out === "string" ? flags.out : "explain.html";
   await writeText(outPath, html);
-  line(`图解已写入：${outPath}（${html.length} 字符，模型 ${response.model}）`);
+  // 一并留下内容 JSON：改版式、导 Markdown、复查出处都靠它，不用再花钱生成一次
+  const jsonPath = typeof flags.json === "string" ? flags.json : outPath.replace(/\.html?$/i, ".json");
+  if (jsonPath !== outPath) await writeJson(jsonPath, grounding.doc);
+  line(`图解已写入：${outPath}（${html.length} 字符，模型 ${generated.model}）`);
+  if (jsonPath !== outPath) line(`内容 JSON：${jsonPath}`);
+  if (grounding.ungrounded.length > 0) {
+    line(`引文未能定位、已标为「模型补充」：${grounding.ungrounded.join("、")}`);
+  }
   if (removed.length > 0) line(`出于安全考虑已去掉：${removed.join("、")}`);
   if (scanned.hazards.length > 0) line(`材料安全提示：${summarizeHazards(scanned.hazards)}`);
 }

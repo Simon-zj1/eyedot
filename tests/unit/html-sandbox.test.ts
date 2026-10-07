@@ -34,6 +34,17 @@ describe("图解 HTML 清洗", () => {
     expect(removed).toContain("外部资源引用");
   });
 
+  it("保留 charset 与 viewport，但删掉能改页面行为的 http-equiv", () => {
+    const { html, removed } = sanitizeExplainerHtml(
+      `<meta charset="utf-8"><meta name="viewport" content="width=device-width">` +
+        `<meta http-equiv="refresh" content="0;url=https://evil.test">`,
+    );
+    expect(html).toContain('charset="utf-8"');
+    expect(html).toContain("viewport");
+    expect(html).not.toContain("http-equiv");
+    expect(removed).toContain("http-equiv");
+  });
+
   it("去掉 markdown 代码围栏，模型常常顺手加上", () => {
     const { html } = sanitizeExplainerHtml("```html\n<p>正文</p>\n```");
     expect(html).toBe("<p>正文</p>");

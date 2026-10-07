@@ -10,6 +10,8 @@ description: >-
 
 这个 skill 在本仓库里的形态是**能力，不是另一个 CLI**：
 生成逻辑写在 [`src/lib/explain/prompt.ts`](../../src/lib/explain/prompt.ts)，
+内容契约在 [`src/lib/explain/schema.ts`](../../src/lib/explain/schema.ts)，
+渲染器在 [`src/lib/explain/render.ts`](../../src/lib/explain/render.ts)，
 清洗与沙箱写在 [`src/lib/security/html-sandbox.ts`](../../src/lib/security/html-sandbox.ts)，
 命令行入口是 `eyedot explain`，网页入口是材料页的「一页图解」。
 
@@ -26,7 +28,8 @@ description: >-
 
 ## 内容规则（提示词里已经写死，这里说明为什么）
 
-1. **只输出 HTML**，单文件自包含：内联 `<style>`，不引用任何外部资源。产物要能离线打开、能直接发给别人。
+1. **模型只输出内容 JSON，HTML 由我们的渲染器生成**（`kind` 取 prose / steps / flow / compare / code / callout）。
+   这样单文件自包含、离线可读、移动端不横向滚动都是代码保证的，不靠模型自觉。
 2. **先给结论**：第一屏就说清「这是什么、为什么重要」，后面才是证据。
 3. **一个面板回答一个问题**；超过 8 个面板就拆页或砍掉。
 4. **按信息的形状选讲法**：抽象概念 → 类比 + 边界；流程 → 步骤或思维导图；代码 → 逐行注释；算法 → 先说要解决哪类问题，再用一个例子走一遍。

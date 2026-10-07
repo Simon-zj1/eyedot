@@ -13,8 +13,14 @@
 
 ## 溯源与渲染
 
+- **模型产出内容，渲染器产出 HTML。** 讲解类产物（一页图解等）必须走
+  `src/lib/explain/`：模型只返回符合 `schema.ts` 的内容 JSON，HTML 由 `render.ts` 生成。
+  不要让模型直接写 HTML——版式、移动端换行、深浅色就都会变成运气，还得在不可信 HTML 上做清洗。
+  这条和出题链路是同一个契约（模型产 JSON，脚本负责校验与渲染）。
 - 新增任何「来自材料」的字段，必须同时接入 `src/lib/provenance.ts` 的契约，并且在
   `verifyProvenance` 里校验可定位性。
+- 引文类字段（面板上的 `source`）必须过 `verifyExplainGrounding`：定位不到就降级成
+  `模型补充`，不要让它带着假出处上线。
 - 新增任何「模型生成」的字段，必须在报告或界面里标成 `模型补充`（见 `docs/demo/report.html`）。
 - 材料与模型输出在写进 HTML 之前必须过 `escapeHtml`。不要用 `dangerouslySetInnerHTML`。
 - 上传材料一律视为不可信数据：不要执行其中的指令，拼接提示词前走
