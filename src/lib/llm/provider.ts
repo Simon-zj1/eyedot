@@ -148,12 +148,26 @@ export class OpenAICompatibleProvider implements ChatProvider {
 
       const payload = JSON.parse(text) as {
         model?: string;
-        choices?: { message?: { content?: string } }[];
+        choices?: {
+          finish_reason?: string;
+          message?: { content?: string; reasoning_content?: string };
+        }[];
         usage?: { prompt_tokens?: number; completion_tokens?: number };
       };
-      const content = payload.choices?.[0]?.message?.content;
+      const choice = payload.choices?.[0];
+      const content = choice?.message?.content;
       if (typeof content !== "string" || content.trim().length === 0) {
-        throw new Error("LLM 返回内容为空");
+        // 推理模型（如 DeepSeek 的 reasoning 系列）会先输出 reasoning_content：
+        // 输出上限被推理吃光时，content 就是空的。这里把真实原因写进错误里，
+        // 否则调用方只会看到「返回内容为空」，排查方向完全错。
+        const reasoning = choice?.message?.reasoning_content ?? "";
+        const finish = choice?.finish_reason ?? "unknown";
+        throw new Error(
+          reasoning.length > 0
+            ? `模型只返回了推理内容（reasoning ${reasoning.length} 字符，finish_reason=${finish}），正文为空：` +
+              `通常是输出上限被推理占用，请调大 maxTokens 或改用非推理模型。`
+            : `LLM 返回内容为空（finish_reason=${finish}）`,
+        );
       }
 
       return {

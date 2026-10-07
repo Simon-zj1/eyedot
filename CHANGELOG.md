@@ -34,6 +34,18 @@
   引文校验）、`tests/integration/explain.test.ts`（落库三件套、重试与退款、伪造出处降级、
   BYOK 不扣积分、版本过期判定）。共 218 个用例。
 
+### 用真模型跑出来的一个真问题
+
+接真 `deepseek-flash` 端到端验证时，第一次生成直接报「LLM 返回内容为空」——原因是
+**推理模型会先输出 `reasoning_content`，输出上限被推理吃光后正文就是空的**。
+
+- 图解调用改为带 `response_format: json_object`，输出上限从 6000 提到 8000；
+- provider 的报错改为自解释：区分「只有推理内容」与「真的空」，并给出「调大 maxTokens 或换非推理模型」
+  的行动建议（新增 `tests/unit/provider-empty-content.test.ts` 钉住）。
+
+修完后真模型端到端通过：6 个面板、4 条引文全部逐字可定位、2 个类比如实标成「模型补充」、
+产出 7.7 KB 单文件 HTML、零外部引用；CDP 实测 390px 视口下 `scrollWidth === 390`，无横向溢出。
+
 ## v0.14.0 · 2026-10-08
 
 ### 开放注册

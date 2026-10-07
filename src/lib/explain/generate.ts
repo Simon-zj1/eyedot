@@ -72,7 +72,10 @@ export async function generateExplainDoc(
       system: EXPLAIN_SYSTEM_PROMPT,
       user,
       temperature: 0.3,
-      maxTokens: 6000,
+      // json: true 让服务端强制 JSON 输出（推理模型尤其需要，否则容易把预算花在推理上）
+      json: true,
+      // 推理模型的 reasoning 也占输出 token，6000 在真实材料上不够用（实测会 content 为空）
+      maxTokens: 8000,
     });
     usage.push({
       model: response.model,
