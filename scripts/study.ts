@@ -543,6 +543,13 @@ function printHelp(): void {
 }
 
 async function main(): Promise<void> {
+  // --help 出现在任何位置都只打印帮助，不执行任何子命令。
+  // 这个守卫是有必要的：`eyedot demo --help` 曾经真的把示例生成了一遍（demo 会写文件），
+  // 一个只想看用法的人不该为此产生副作用。
+  if (process.argv.slice(2).some((arg) => arg === "--help" || arg === "-h")) {
+    printHelp();
+    return;
+  }
   const { command, flags } = parseArgs(process.argv.slice(2));
   switch (command) {
     case "answer-template":

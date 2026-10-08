@@ -129,6 +129,24 @@ npx tsx scripts/study.ts grade   --material examples/agent-interview-notes.md --
 
 The output is a **self-contained offline report** (`report.html`) with no external requests or CDN assets.
 
+Before the package is on npm, three ways to run it — most reliable first:
+
+```bash
+# 1. clone and run
+git clone https://github.com/Simon-zj1/eyedot && cd eyedot && npm install
+npx tsx scripts/study.ts verify --material ... --exam ...
+
+# 2. no git: download the source tarball
+curl -L https://github.com/Simon-zj1/eyedot/archive/refs/heads/main.tar.gz | tar xz
+cd eyedot-main && npm install && npx tsx scripts/study.ts verify --material ... --exam ...
+
+# 3. install once as a global command (git over HTTPS, not SSH)
+npm i -g git+https://github.com/Simon-zj1/eyedot.git && eyedot verify --material ... --exam ...
+```
+
+`npx github:Simon-zj1/eyedot ...` goes over **SSH** by default and fails without a working GitHub
+SSH key.
+
 ## Requirements
 
 ### Supported model providers (bring your own key)

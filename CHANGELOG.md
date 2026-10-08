@@ -2,6 +2,15 @@
 
 ## v0.15.0 · 2026-10-08
 
+### 修掉两个「文档说的和实际做的不一样」
+
+- **`--help` 现在只打印帮助。** 之前 `eyedot demo --help` 会**真的执行 demo**（写出示例文件）——
+  只想看用法的人不该产生副作用。守卫放在子命令分发之前，`tests/integration/study-cli.test.ts` 覆盖。
+- **README 里的免安装用法写错了。** 原来写 `npx github:Simon-zj1/eyedot ...`，但 npm 的
+  `owner/repo` 简写**默认走 SSH**，机器上没有可用的 GitHub SSH key 就会失败。
+  改成三种按可靠程度排序的方式：clone 后跑 / 下载 tarball / `npm i -g git+https://...`，
+  并写明 SSH 那条的限制。
+
 ### 一页图解改成「内容 JSON + 渲染器」
 
 参照 `learn-from-materials` 的两阶段契约（模型只产内容、脚本只负责渲染），把图解链路重做：

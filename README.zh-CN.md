@@ -161,10 +161,23 @@ npx eyedot render  --report learning_work/report.json --out report.html
 > 包已按 npm 发布形态配置好（`bin` / `files` / `publishConfig`）。如果 `npx eyedot` 报 404，
 > 说明还没发布；可以先用仓库内的等价命令，或直接从 GitHub 跑：
 >
+> 三种不依赖 npm 包的方式，按可靠程度排：
+>
 > ```bash
-> npx tsx scripts/study.ts verify --material ... --exam ...   # 已 clone 并 npm install
-> npx github:Simon-zj1/eyedot verify --material ... --exam ...  # 不 clone
+> # 1. clone 后直接跑（最稳）
+> git clone https://github.com/Simon-zj1/eyedot && cd eyedot && npm install
+> npx tsx scripts/study.ts verify --material ... --exam ...
+>
+> # 2. 不想用 git：下载源码包
+> curl -L https://github.com/Simon-zj1/eyedot/archive/refs/heads/main.tar.gz | tar xz
+> cd eyedot-main && npm install && npx tsx scripts/study.ts verify --material ... --exam ...
+>
+> # 3. 装成全局命令（git 走 HTTPS，不是 SSH）
+> npm i -g git+https://github.com/Simon-zj1/eyedot.git && eyedot verify --material ... --exam ...
 > ```
+>
+> 注意 `npx github:Simon-zj1/eyedot ...` 这种写法**默认走 SSH**，机器上没有可用的 GitHub SSH key
+> 就会失败；能按包名装时（`npx eyedot`）它才是最短路径。
 
 发布到 npm（维护者用）：
 

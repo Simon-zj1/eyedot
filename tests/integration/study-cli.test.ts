@@ -26,6 +26,20 @@ function run(args: string[], options: { expectFailure?: boolean } = {}): string 
 }
 
 describe("命令行工具（Agent Skill 的执行入口）", () => {
+  it("--help 出现在任何位置都只打印帮助，不执行子命令", () => {
+    // `eyedot demo --help` 曾经真的跑了一遍 demo（会写文件）：只想看用法的人不该产生副作用
+    const help = run(["--help"]);
+    expect(help).toContain("点睛 · 命令行工具");
+    expect(help).toContain("explain");
+
+    const afterSubcommand = run(["demo", "--help"]);
+    expect(afterSubcommand).toContain("点睛 · 命令行工具");
+    expect(afterSubcommand).not.toContain("示例已生成");
+
+    const short = run(["-h"]);
+    expect(short).toContain("点睛 · 命令行工具");
+  });
+
   it("demo 生成试卷、作答与可打开的离线报告", () => {
     const dir = mkdtempSync(join(tmpdir(), "jev-study-"));
     const output = run(["demo", "--out", dir]);
