@@ -169,20 +169,21 @@ npx eyedot render  --report learning_work/report.json --out report.html
 > 三种不依赖 npm 包的方式，按可靠程度排：
 >
 > ```bash
-> # 1. clone 后直接跑（最稳）
+> # 1. 从 GitHub Release 装成全局命令（不需要 npm 账号）
+> npm i -g https://github.com/Simon-zj1/eyedot/releases/download/v0.15.0/eyedot-0.15.0.tgz
+> eyedot --help
+>
+> # 2. clone 后直接跑（连着源码一起用）
 > git clone https://github.com/Simon-zj1/eyedot && cd eyedot && npm install
 > npx tsx scripts/study.ts verify --material ... --exam ...
 >
-> # 2. 不想用 git：下载源码包
+> # 3. 不想用 git：下载源码包
 > curl -L https://github.com/Simon-zj1/eyedot/archive/refs/heads/main.tar.gz | tar xz
 > cd eyedot-main && npm install && npx tsx scripts/study.ts verify --material ... --exam ...
->
-> # 3. 装成全局命令（git 走 HTTPS，不是 SSH）
-> npm i -g git+https://github.com/Simon-zj1/eyedot.git && eyedot verify --material ... --exam ...
 > ```
 >
-> 注意 `npx github:Simon-zj1/eyedot ...` 这种写法**默认走 SSH**，机器上没有可用的 GitHub SSH key
-> 就会失败；能按包名装时（`npx eyedot`）它才是最短路径。
+> 换版本只要改 URL 里的版本号。注意 `npx github:Simon-zj1/eyedot ...` 这种写法**默认走 SSH**，
+> 机器上没有可用的 GitHub SSH key 就会失败；等包发到 npm 之后，`npx eyedot` 才是最短路径。
 
 发布到 npm（维护者用）：
 

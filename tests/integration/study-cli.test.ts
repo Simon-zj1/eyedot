@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -26,6 +26,25 @@ function run(args: string[], options: { expectFailure?: boolean } = {}): string 
 }
 
 describe("命令行工具（Agent Skill 的执行入口）", () => {
+  it("装进 node_modules 之后仍然能跑（别名解析不能依赖 tsconfig 的 paths）", () => {
+    // 真实事故：tsx 不会对 node_modules 内的文件应用 tsconfig 的 paths，于是 `@/lib/...`
+    // 在全局安装后直接解析失败，而仓库里跑得好好的。这里把包**复制**进一个 node_modules
+    // （不能用软链：Node 会解析到真实路径，就绕过 node_modules 这条语义了），再运行入口。
+    const project = mkdtempSync(join(tmpdir(), "eyedot-installed-"));
+    const pkg = join(project, "node_modules", "eyedot");
+    for (const entry of ["bin", "scripts", "src", "package.json", "tsconfig.json"]) {
+      cpSync(join(repoRoot, entry), join(pkg, entry), { recursive: true });
+    }
+    symlinkSync(join(repoRoot, "node_modules"), join(pkg, "node_modules"), "dir");
+
+    const output = execFileSync(process.execPath, [join(pkg, "bin", "eyedot.mjs"), "--help"], {
+      cwd: project,
+      encoding: "utf8",
+    });
+    expect(output).toContain("点睛 · 命令行工具");
+    expect(output).toContain("explain");
+  });
+
   it("--help 出现在任何位置都只打印帮助，不执行子命令", () => {
     // `eyedot demo --help` 曾经真的跑了一遍 demo（会写文件）：只想看用法的人不该产生副作用
     const help = run(["--help"]);

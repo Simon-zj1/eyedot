@@ -138,20 +138,21 @@ The output is a **self-contained offline report** (`report.html`) with no extern
 Before the package is on npm, three ways to run it — most reliable first:
 
 ```bash
-# 1. clone and run
+# 1. install once from the GitHub release (no npm account needed)
+npm i -g https://github.com/Simon-zj1/eyedot/releases/download/v0.15.0/eyedot-0.15.0.tgz
+eyedot --help
+
+# 2. clone and run (if you want the source too)
 git clone https://github.com/Simon-zj1/eyedot && cd eyedot && npm install
 npx tsx scripts/study.ts verify --material ... --exam ...
 
-# 2. no git: download the source tarball
+# 3. no git: download the source tarball
 curl -L https://github.com/Simon-zj1/eyedot/archive/refs/heads/main.tar.gz | tar xz
 cd eyedot-main && npm install && npx tsx scripts/study.ts verify --material ... --exam ...
-
-# 3. install once as a global command (git over HTTPS, not SSH)
-npm i -g git+https://github.com/Simon-zj1/eyedot.git && eyedot verify --material ... --exam ...
 ```
 
-`npx github:Simon-zj1/eyedot ...` goes over **SSH** by default and fails without a working GitHub
-SSH key.
+Change the version in the URL to install another release. `npx github:Simon-zj1/eyedot ...` goes over
+**SSH** by default and fails without a working GitHub SSH key.
 
 ## Requirements
 

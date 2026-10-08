@@ -32,10 +32,20 @@ try {
   process.exit(1);
 }
 
-const child = spawn(process.execPath, ["--import", tsxEntry, script, ...forwarded], {
+/**
+ * 两个 --import：
+ * 1. 先注册别名钩子，让 `@/…` 在 node_modules 里也能解析（见 alias-loader.mjs 的注释）；
+ * 2. 再注册 tsx，负责把 TypeScript 编译到内存里执行。
+ */
+const aliasLoader = join(here, "alias-loader.mjs");
+const child = spawn(
+  process.execPath,
+  ["--import", aliasLoader, "--import", tsxEntry, script, ...forwarded],
+  {
   cwd: root,
   stdio: "inherit",
-});
+  },
+);
 
 child.on("exit", (code, signal) => {
   if (signal) process.kill(process.pid, signal);
