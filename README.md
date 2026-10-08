@@ -5,7 +5,7 @@
 <h1 align="center">Eyedot · 点睛</h1>
 
 <p align="center">
-  <strong>Turn your own study material into an exam that grades itself point by point — and tells you which idea you failed to express.</strong>
+  <strong>Turn your own material into an exam that grades point by point, shows exactly what you have not learned, then reviews it on a forgetting curve.</strong>
 </p>
 
 <p align="center">
@@ -31,6 +31,12 @@ atomic, checkable questions, decide each of them, and combine the probabilities 
 engine is swappable: a general-LLM judge by default, TypeSafe Jev (System One) when a
 `TYPESAFE_API_KEY` is configured, and a lexical baseline for offline demos. Every point in the final
 score can be audited in the report.
+
+Four things differ from the usual approach: **point-by-point grading** (not one opaque 0–100 score),
+**uncertainty surfaced instead of hidden** (a weak judgment becomes "needs review" with a score range),
+**FSRS review scheduling after the exam**, and **one-page explainers** for concepts that need a picture.
+Model access is a choice: bring your own key (DeepSeek, GLM, Qwen, Kimi, OpenAI, Claude) or use platform
+credits.
 
 ![Judgment report](docs/screenshots/result-960.jpg)
 
