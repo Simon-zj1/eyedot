@@ -19,7 +19,9 @@ export type EngineStatus = {
 
 const JUDGE_LABEL: Record<string, string> = {
   typesafe: "TypeSafe Jev",
-  "llm-judge": "LLM 判定（对比基线）",
+  // 对用户来说「对比基线」是内部视角：它就是通用大模型在做判定。
+  // 「相对于决策模型的基线」这个含义留在 README 与架构文档里解释。
+  "llm-judge": "大模型判定",
   "lexical-demo": "离线词面判定（演示）",
 };
 

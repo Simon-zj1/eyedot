@@ -38,17 +38,17 @@ Four things differ from the usual approach: **point-by-point grading** (not one 
 Model access is a choice: bring your own key (DeepSeek, GLM, Qwen, Kimi, OpenAI, Claude) or use platform
 credits.
 
-![Judgment report](docs/screenshots/result-960.jpg)
+![Home screen: what is due today, how many materials, and which topics are weakest](docs/screenshots/dashboard-960.jpg)
 
-![Point-by-point judgment](docs/screenshots/rubric-960.jpg)
+![Judgment report: total score, needs-review count, and an honest coverage panel](docs/screenshots/report-960.jpg)
 
 ![Today's review: due cards scheduled by FSRS, tagged with last score, review and lapse counts](docs/screenshots/reviews-960.jpg)
 
-![Material Q&A: the answer cites each sentence, with a source list naming sentence and page plus verification notices](docs/screenshots/ask-960.jpg)
+![One-page explainer: conclusion first, each panel citing its material sentence, model-added parts tagged](docs/screenshots/explainer-960.jpg)
 
-![Settings: privacy notes, three export formats, and an account-deletion entry](docs/screenshots/export-960.jpg)
+![Settings: credits, the model-source switch (platform credits or your own key), redemption codes, and every debit itemised](docs/screenshots/credits-960.jpg)
 
-![Result page: a report-a-wrong-grade form under each question, with honest coverage on the same page](docs/screenshots/feedback-960.jpg)
+![Material page: generate an exam from the topics the app extracted, and ask questions answered with citations](docs/screenshots/materials-960.jpg)
 
 > Screenshots come from the offline demo mode (the fallback engine used when no API key is configured), so
 > question style is mechanical and grading uses lexical overlap instead of Jev. With `TYPESAFE_API_KEY` the

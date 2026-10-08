@@ -39,21 +39,21 @@ OpenAI / Claude），或用平台额度。
 
 ## 界面
 
-![判定报告：总分、待复核数量与客观题正确数](docs/screenshots/result-960.jpg)
+![首页：今日待复习、材料数、额度与薄弱知识点](docs/screenshots/dashboard-960.jpg)
 
-![逐点判定：每个得分点的命中概率与判定强度](docs/screenshots/rubric-960.jpg)
+![判定报告：总分、待复核数量、覆盖率与逐题逐点对照](docs/screenshots/report-960.jpg)
 
-![确认知识点与题型配比后生成试卷](docs/screenshots/topics-960.jpg)
+![材料页：从切分出的知识点直接生成试卷，也可以就材料提问](docs/screenshots/materials-960.jpg)
 
-![错题本与知识点掌握度](docs/screenshots/mistakes-960.jpg)
+![作答页：客观题与简答题混排，答完即判定](docs/screenshots/take-960.jpg)
 
 ![今日复习：按 FSRS 排期的到期卡片，标注上次得分、已复习与遗忘次数](docs/screenshots/reviews-960.jpg)
 
-![材料问答：回答逐句带引注，下方列出每条出处（第几句、第几页）与核验提示](docs/screenshots/ask-960.jpg)
+![一页图解：结论在前，每个面板标出材料原句，模型补充的部分单独标注](docs/screenshots/explainer-960.jpg)
 
-![设置页：数据与隐私、三种格式导出、账号删除入口](docs/screenshots/export-960.jpg)
+![设置页：积分余额、模型来源二选一、兑换码与最近十笔积分变动](docs/screenshots/credits-960.jpg)
 
-![结果页：每题下方可上报判错，同页如实显示覆盖率](docs/screenshots/feedback-960.jpg)
+![结果页：每题下方可上报判错，同页如实显示覆盖率](docs/screenshots/report-960.jpg)
 
 > 截图来自本地离线演示模式（未配置 API key 时的降级引擎），所以出题风格偏机械、
 > 判定用的是词面近似而非 Jev。接入 `TYPESAFE_API_KEY` 后界面一致，判定质量不同。

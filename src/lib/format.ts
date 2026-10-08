@@ -43,7 +43,14 @@ export function formatEngine(judgment: JudgmentRecord): string {
       : judgment.method === "semantic"
         ? "语义等价判定"
         : "逐点判定";
-  return `${methodLabel} · ${judgment.engineId} · ${judgment.model}`;
+  // 客观题由代码判分，engineId 与 model 都是 deterministic：
+  // 原样拼出来是「确定性判分 · deterministic · deterministic」，三遍同义，还把报告页面读得很吵。
+  const parts = [methodLabel];
+  for (const value of [judgment.engineId, judgment.model]) {
+    if (!value || value === "deterministic" || parts.includes(value)) continue;
+    parts.push(value);
+  }
+  return parts.join(" · ");
 }
 
 export function formatReviewReason(reason: string): string {
