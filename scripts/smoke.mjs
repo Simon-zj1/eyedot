@@ -1,12 +1,17 @@
 /**
  * 真实服务器冒烟测试：对已启动的 Next 服务跑完整闭环。
  *
- *   INITIAL_INVITE_CODES=SMOKE-CODE npm run build && npm run start -- -p 3111
- *   BASE_URL=http://localhost:3111 INVITE_CODE=SMOKE-CODE npm run smoke
+ *   npm run dev -- -p 3200        # 另开一个终端
+ *   BASE_URL=http://localhost:3200 npm run smoke
+ *
+ * 登录走的是「邮箱验证码」两步：先请求验证码，再拿验证码换 Cookie。
+ * 开发环境（非生产）响应里会带回 devCode，所以这个脚本可以无人值守跑；
+ * 对着生产跑时必须自己提供 SMOKE_CODE，否则只做匿名能到的检查。
  */
 const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 const INVITE_CODE = process.env.INVITE_CODE ?? "DEV-INVITE";
 const EMAIL = process.env.SMOKE_EMAIL ?? `smoke-${Date.now()}@example.com`;
+const PROVIDED_CODE = process.env.SMOKE_CODE ?? "";
 
 const MATERIAL = [
   "光合作用分为光反应和暗反应两个阶段。",
@@ -51,11 +56,24 @@ async function main() {
   const landingHtml = await landing.text();
   record("落地页", landing.status, landingHtml.includes("决策模型") ? "含产品说明" : "");
 
-  const login = await request("/api/auth/login", {
+  // 第一步：请求验证码（注册已开放，邀请码只是额度加成，可以不带）
+  const requested = await request("/api/auth/login", {
     method: "POST",
-    body: { email: EMAIL, inviteCode: INVITE_CODE },
+    body: process.env.INVITE_CODE ? { email: EMAIL, inviteCode: INVITE_CODE } : { email: EMAIL },
   });
-  record("邀请码登录", login.status);
+  const requestedBody = requested.ok ? await requested.json() : {};
+  record("请求登录验证码", requested.status, requestedBody.provider ? `通道=${requestedBody.provider}` : "");
+
+  // 第二步：用验证码换会话。生产环境拿不到 devCode，只能由调用方提供 SMOKE_CODE。
+  const code = PROVIDED_CODE || requestedBody.devCode || "";
+  if (!code) {
+    console.log(
+      "… 这个环境不返回 devCode（多半是生产）：请用 SMOKE_CODE=<邮箱收到的验证码> 再跑一次，才能覆盖需要登录的接口。",
+    );
+  } else {
+    const login = await request("/api/auth/login", { method: "POST", body: { email: EMAIL, code } });
+    record("验证码换会话", login.status, cookie ? "已拿到 Cookie" : "没有 Cookie");
+  }
 
   const material = await request("/api/materials", {
     method: "POST",
@@ -140,7 +158,12 @@ async function main() {
   record("错题本页", mistakes.status, (await mistakes.text()).includes("错题本") ? "渲染正常" : "");
 
   const settings = await request("/settings");
-  record("设置页", settings.status, (await settings.text()).includes("自带密钥") ? "渲染正常" : "");
+  const settingsHtml = await settings.text();
+  record(
+    "设置页",
+    settings.status,
+    settingsHtml.includes("自带密钥") || settingsHtml.includes("积分") ? "渲染正常" : "",
+  );
 
   const failed = results.filter((item) => !item.ok);
   console.log(

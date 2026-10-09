@@ -6,6 +6,7 @@ import {
 } from "@/lib/db/types";
 import { toStudentQuestion } from "@/lib/services/questions";
 import { todayLlmUsage } from "@/lib/services/usage";
+import { renderExplainerMarkdown } from "@/lib/explain/render-markdown";
 
 /**
  * 数据导出。
@@ -27,6 +28,7 @@ export type BackupBundle = {
   attempts: unknown[];
   answers: unknown[];
   judgments: unknown[];
+  explanations: unknown[];
   mastery: unknown[];
   mistakes: unknown[];
   reviews: unknown[];
@@ -54,6 +56,13 @@ export async function buildBackup(user: UserRecord): Promise<BackupBundle> {
   const blueprints = await Promise.all(
     materials.map((material) => store.getBlueprintByMaterial(material.id)),
   );
+  // 图解是用户资产的一部分（材料删掉就跟着没了），所以备份必须带上；
+  // 同时存内容 JSON 与渲染后的 HTML：JSON 能换版式，HTML 能直接打开。
+  const explanations = (
+    await Promise.all(
+      materials.map((material) => store.listExplanationsByMaterial(material.id)),
+    )
+  ).flat();
   const examQuestionIds = new Map<string, string[]>();
   for (const exam of exams) {
     examQuestionIds.set(exam.id, await store.listExamQuestionIds(exam.id));
@@ -85,6 +94,18 @@ export async function buildBackup(user: UserRecord): Promise<BackupBundle> {
     attempts,
     answers: answers.flat(),
     judgments: judgments.flat(),
+    explanations: explanations.map((record) => ({
+      id: record.id,
+      materialId: record.materialId,
+      topic: record.topic,
+      model: record.model,
+      materialHash: record.materialHash,
+      createdAt: record.createdAt,
+      /** 内容 JSON：换版式、导 Markdown 都靠它；旧数据可能为 null */
+      doc: record.doc,
+      /** 渲染后的单文件 HTML，可直接打开 */
+      html: record.html,
+    })),
     mastery,
     mistakes,
     reviews,
@@ -193,6 +214,7 @@ export async function buildMarkdownExport(user: UserRecord): Promise<string> {
 
   for (const material of materials) {
     const questions = await store.listQuestionsByMaterial(material.id);
+    const explanations = await store.listExplanationsByMaterial(material.id);
     lines.push(`---`, "", `## ${material.title}`, "");
     if (material.sourceMap?.fileName) {
       lines.push(
@@ -203,6 +225,31 @@ export async function buildMarkdownExport(user: UserRecord): Promise<string> {
       );
     }
     lines.push("### 材料原文", "", material.rawText, "");
+    if (explanations.length > 0) {
+      lines.push(`### 一页图解（${explanations.length}）`, "");
+      for (const explanation of explanations) {
+        lines.push(`#### ${explanation.topic}`, "");
+        if (explanation.doc) {
+          // 同一份内容 JSON 直接换渲染器：Markdown 版不重新调用模型，也就不再花钱
+          lines.push(
+            renderExplainerMarkdown(explanation.doc, {
+              materialTitle: material.title,
+              materialHash: explanation.materialHash ?? material.contentHash,
+              model: explanation.model,
+              generatedAt: explanation.createdAt,
+            }),
+            "",
+          );
+        } else {
+          // 早期产物只有 HTML：如实说明，而不是假装能给出 Markdown
+          lines.push(
+            `> 这条图解生成于「内容 JSON」落库之前，没有结构化内容可转换；` +
+              `HTML 原文仍可在应用的图解页打开与下载。（模型 ${explanation.model}）`,
+            "",
+          );
+        }
+      }
+    }
     if (questions.length > 0) {
       lines.push("### 题目与评分点", "");
       questions.forEach((question, index) => {

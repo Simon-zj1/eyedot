@@ -6,10 +6,12 @@ import { setChatProviderOverride } from "@/lib/llm/provider";
 import type { AnswerPayload } from "@/lib/grading";
 import { submitAttemptForUser } from "@/lib/services/attempts";
 import { buildAnkiCsv, buildBackup, buildMarkdownExport } from "@/lib/services/export";
+import { createExplanation } from "@/lib/services/explain";
 import { createExamForMaterial, generateOutlineForMaterial } from "@/lib/services/generation";
 import { createMaterialForUser } from "@/lib/services/materials";
 import { recordChatUsage } from "@/lib/services/usage";
 import {
+  FakeChatProvider,
   FakeEngine,
   SAMPLE_MATERIAL,
   loginWithInvite,
@@ -40,6 +42,59 @@ describe("数据导出", () => {
   });
 
   afterEach(() => resetOverrides());
+
+  /** 图解需要一个能返回合法内容 JSON 的对话模型 */
+  async function seedExplanation(materialId: string, topic: string) {
+    setChatProviderOverride(
+      new FakeChatProvider(() =>
+        JSON.stringify({
+          title: "光合作用的两步",
+          lead: "先光反应，再暗反应。",
+          panels: [
+            {
+              kind: "prose",
+              title: "两个阶段",
+              body: "光合作用分两步走。",
+              source: "光合作用分为光反应和暗反应两个阶段。",
+            },
+            { kind: "steps", title: "光反应做了什么", steps: ["吸收光能", "水分解出氧气"] },
+          ],
+        }),
+      ),
+      { countsAgainstQuota: true },
+    );
+    return createExplanation(user, materialId, topic);
+  }
+
+  it("备份带上图解产物：内容 JSON 与渲染后的 HTML 都在", async () => {
+    const material = await createMaterialForUser(user, {
+      title: "生物笔记",
+      rawText: SAMPLE_MATERIAL,
+    });
+    await seedExplanation(material.id, "光合作用的两步");
+
+    const backup = await buildBackup(user);
+    expect((backup as { explanations: unknown[] }).explanations).toHaveLength(1);
+    const record = (backup as { explanations: { topic: string; doc: { panels: unknown[] } | null; html: string; materialHash: string }[] })
+      .explanations[0];
+    expect(record.topic).toBe("光合作用的两步");
+    expect(record.doc?.panels.length).toBeGreaterThan(0);
+    expect(record.html).toContain("点睛 · 一页图解");
+    expect(record.materialHash).toBe(material.contentHash);
+  });
+
+  it("Markdown 导出用同一份内容 JSON 渲染图解，并标出材料原句", async () => {
+    const material = await createMaterialForUser(user, {
+      title: "生物笔记",
+      rawText: SAMPLE_MATERIAL,
+    });
+    await seedExplanation(material.id, "光合作用的两步");
+
+    const markdown = await buildMarkdownExport(user);
+    expect(markdown).toContain("### 一页图解（1）");
+    expect(markdown).toContain("#### 光合作用的两步");
+    expect(markdown).toContain("材料原句：「光合作用分为光反应和暗反应两个阶段。」");
+  });
 
   async function seedAttempt() {
     const material = await createMaterialForUser(user, {

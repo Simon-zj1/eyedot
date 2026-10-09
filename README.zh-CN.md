@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-v0.15.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-v0.15.1-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/standard-Agent%20Skills-5b6ee1" alt="Agent Skills">
   <img src="https://img.shields.io/badge/Next.js-15-000000" alt="Next.js">
@@ -170,7 +170,7 @@ npx eyedot render  --report learning_work/report.json --out report.html
 >
 > ```bash
 > # 1. 从 GitHub Release 装成全局命令（不需要 npm 账号）
-> npm i -g https://github.com/Simon-zj1/eyedot/releases/download/v0.15.0/eyedot-0.15.0.tgz
+> npm i -g https://github.com/Simon-zj1/eyedot/releases/download/v0.15.1/eyedot-0.15.1.tgz
 > eyedot --help
 >
 > # 2. clone 后直接跑（连着源码一起用）

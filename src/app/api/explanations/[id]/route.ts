@@ -18,6 +18,8 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const user = await requireUserFromRequest(request);
     const { id } = await context.params;
     const record = await getExplanationForUser(user, id);
+    // ?download=1 → 当附件下载（图解的卖点之一是「单文件、可带走」，那就要能一键存下来）
+    const download = request.nextUrl.searchParams.get("download") === "1";
     return new NextResponse(record.html, {
       status: 200,
       headers: {
@@ -25,6 +27,9 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         "content-security-policy": EXPLAINER_CSP,
         "x-content-type-options": "nosniff",
         "cache-control": "private, no-store",
+        ...(download
+          ? { "content-disposition": `attachment; filename="explain-${record.id}.html"` }
+          : {}),
       },
     });
   } catch (error) {

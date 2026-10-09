@@ -1,6 +1,6 @@
 {
   "name": "eyedot",
-  "version": "0.15.0",
+  "version": "0.15.1",
   "type": "module",
   "description": "把上传的学习材料变成可自动判分的自助考试：出题交给 LLM，判定交给可替换的判定引擎（默认通用大模型，可切到 TypeSafe Jev 决策模型），报告与覆盖率可逐条核对。",
   "license": "MIT",

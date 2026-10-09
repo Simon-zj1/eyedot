@@ -125,11 +125,15 @@ export function ExplainPanel({
             }}
           />
           <p className="small muted">
-            这份图解由模型生成，标「补充」的内容不在你的材料里；
+            这份图解由模型生成，标「模型补充」的内容不在你的材料里。单文件、可离线：{" "}
             <a href={`/api/explanations/${current}`} target="_blank" rel="noopener noreferrer">
-              在新标签页打开
+              新标签页打开
             </a>
-            （单文件，可离线保存）。
+            {" · "}
+            <a href={`/api/explanations/${current}?download=1`}>下载 HTML</a>
+            {" · "}
+            <a href={`/api/explanations/${current}/markdown`}>下载 Markdown</a>
+            。
           </p>
         </>
       ) : null}
