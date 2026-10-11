@@ -37,7 +37,7 @@ npm run db:migrate                                   # 按 migrations 建表 / �
 如果只是想先在手机上试，不必等 Vercel。在本机跑生产构建，再用 Cloudflare 的临时隧道暴露出去：
 
 ```bash
-cd ~/Documents/ChatGPT/Ski
+cd ~/Developer/Ski
 npm run build
 SESSION_SECRET="$(openssl rand -base64 32)" INITIAL_INVITE_CODES="MY-INVITE" npx next start -p 3211
 # 另开一个终端：
@@ -71,7 +71,7 @@ cloudflared tunnel --url http://localhost:3211     # 输出 https://xxx.trycloud
 ```bash
 npm i -g vercel
 vercel login
-cd /Users/simon-zj/Documents/ChatGPT/Ski
+cd ~/Developer/Ski
 vercel --prod
 ```
 
